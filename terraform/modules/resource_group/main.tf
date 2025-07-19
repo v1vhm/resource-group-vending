@@ -2,9 +2,12 @@ resource "azurerm_resource_group" "rg" {
   name     = "rg-${var.workload_short_name}-${var.environment}"
   location = var.location
   tags = {
-    workload_name = var.workload_name
-    network_size  = var.network_size
-    environment   = var.environment
+    workload_name       = var.workload_name
+    workload_short_name = var.workload_short_name
+    network_size        = var.network_size
+    environment         = var.environment
+    github_org          = var.github_org
+    github_repo         = var.github_repo
   }
 }
 

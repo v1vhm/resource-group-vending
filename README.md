@@ -18,6 +18,8 @@ github:
 ```
 
 Managed identities and federated credentials are created automatically by Terraform.
+The resource group is tagged with the workload name, short name, environment,
+GitHub organization and repository so that ownership is clear.
 
 ## Adding a workload
 1. Copy `workloads/demo.yaml` and adjust values.
