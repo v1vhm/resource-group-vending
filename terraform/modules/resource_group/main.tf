@@ -24,11 +24,12 @@ resource "azurerm_role_assignment" "owner" {
 }
 
 resource "azurerm_federated_identity_credential" "github" {
-  name                      = "fic-${var.workload_short_name}-${var.environment}"
-  user_assigned_identity_id = azurerm_user_assigned_identity.uai.id
-  issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_org}/${var.github_repo}:${var.github_entity}:${var.github_entity_name}"
-  audiences                 = ["api://AzureADTokenExchange"]
+  name                = "fic-${var.workload_short_name}-${var.environment}"
+  resource_group_name = azurerm_resource_group.rg.name
+  parent_id           = azurerm_user_assigned_identity.uai.id
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_org}/${var.github_repo}:${var.github_entity}:${var.github_entity_name}"
+  audience            = ["api://AzureADTokenExchange"]
 }
 
 output "resource_group_id" {
