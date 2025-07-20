@@ -11,11 +11,20 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      ARM_USE_OIDC: true
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURECLIENTID }}
+          tenant-id: ${{ secrets.AZURETENANTID }}
+          subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
 
       - name: Terraform Init
         run: terraform -chdir=terraform init
@@ -33,5 +42,3 @@ jobs:
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform -chdir=terraform apply -auto-approve
-        env:
-          ARM_USE_OIDC: true
