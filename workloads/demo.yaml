@@ -3,6 +3,7 @@ workload_short_name: demowk
 location: eastus
 network_size: small
 environment: dev
+service_identifier: svc-12345
 github:
   org: my-org
   repo: resource-group-vending

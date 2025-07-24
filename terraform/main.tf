@@ -29,6 +29,7 @@ module "workloads" {
   location            = each.value.location
   network_size        = each.value.network_size
   environment         = each.value.environment
+  service_identifier  = each.value.service_identifier
   github_org          = each.value.github.org
   github_repo         = each.value.github.repo
   github_entity       = each.value.github.entity
