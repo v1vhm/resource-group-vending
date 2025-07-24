@@ -6,6 +6,7 @@ resource "azurerm_resource_group" "rg" {
     workload_short_name = var.workload_short_name
     network_size        = var.network_size
     environment         = var.environment
+    service_identifier  = var.service_identifier
     github_org          = var.github_org
     github_repo         = var.github_repo
   }

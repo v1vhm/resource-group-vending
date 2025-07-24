@@ -10,6 +10,7 @@ workload_short_name: demowk    # 6-10 chars, no spaces or special characters
 location: eastus
 network_size: small            # small | medium | large
 environment: dev               # dev | test | prod
+service_identifier: svc-12345  # service identifier from Port
 github:
   org: my-org
   repo: resource-group-vending

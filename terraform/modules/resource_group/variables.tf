@@ -3,6 +3,7 @@ variable "workload_short_name" { type = string }
 variable "location" { type = string }
 variable "network_size" { type = string }
 variable "environment" { type = string }
+variable "service_identifier" { type = string }
 variable "github_org" { type = string }
 variable "github_repo" { type = string }
 variable "github_entity" { type = string }
