@@ -83,6 +83,31 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: "Workload file created"
 
+      - name: Create Workload in Port with Repository Relation
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          identifier: "${{ inputs.workload_name }}_${{ inputs.environment }}"
+          title: "${{ inputs.workload_name }} - ${{ inputs.environment }}"
+          blueprint: "workload"
+          relations: |
+            {
+              "service": "${{ inputs.service_identifier }}"
+            }
+
+      - name: Log workload entity created
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Workload entity created in Port"
+
       - name: Create pull request
         id: cpr
         uses: peter-evans/create-pull-request@v5
@@ -103,7 +128,8 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: "Opened pull request #${{ steps.cpr.outputs.pull-request-number }}"
+          logMessage: >
+            Opened pull request #${{ steps.cpr.outputs.pull-request-number }}
 
       - name: Merge pull request
         if: steps.cpr.outputs.pull-request-number != ''
