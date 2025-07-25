@@ -22,6 +22,8 @@ jobs:
       ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
       ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v3
 
