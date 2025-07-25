@@ -1,0 +1,124 @@
+name: Generate Workload
+
+on:
+  workflow_dispatch:
+    inputs:
+      workload_name:
+        description: 'Workload name'
+        required: true
+      workload_short_name:
+        description: 'Short name used for the file name'
+        required: true
+      location:
+        description: 'Azure region'
+        required: true
+        default: 'eastus'
+      network_size:
+        description: 'Network size (small|medium|large)'
+        required: true
+        default: 'small'
+      environment:
+        description: 'Environment (dev|test|prod)'
+        required: true
+        default: 'dev'
+      service_identifier:
+        description: 'Service identifier'
+        required: true
+      port_context:
+        required: true
+        description: Includes the action's run id
+        type: string
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      PORT_RUN_ID: ${{ inputs.port_context }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log workflow start
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Workflow started"
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Create workload file
+        run: |
+          cat <<'YAML' > workloads/${{ inputs.workload_short_name }}.yaml
+          workload_name: ${{ inputs.workload_name }}
+          workload_short_name: ${{ inputs.workload_short_name }}
+          location: ${{ inputs.location }}
+          network_size: ${{ inputs.network_size }}
+          environment: ${{ inputs.environment }}
+          service_identifier: ${{ inputs.service_identifier }}
+          github:
+            org: ${{ github.repository_owner }}
+            repo: ${{ github.event.repository.name }}
+            entity: environment
+            entity_name: ${{ inputs.workload_short_name }}
+          YAML
+
+      - name: Log file created
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Workload file created"
+
+      - name: Create pull request
+        id: cpr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          commit-message: "Add workload ${{ inputs.workload_short_name }}"
+          branch: "workload/${{ inputs.workload_short_name }}"
+          title: "Add workload ${{ inputs.workload_short_name }}"
+          body: |
+            Automated addition of workload `${{ inputs.workload_name }}`.
+          delete-branch: true
+
+      - name: Log pull request created
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Opened pull request #${{ steps.cpr.outputs.pull-request-number }}"
+
+      - name: Merge pull request
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: peter-evans/pull-request-merge@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
+
+      - name: Log pull request merged
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: "Pull request merged"
