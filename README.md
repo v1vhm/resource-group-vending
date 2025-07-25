@@ -31,6 +31,8 @@ GitHub organization and repository so that ownership is clear.
 ## Running locally
 ```bash
 terraform -chdir=terraform init
+export PORT_CLIENT_ID=<client id>       # Port credentials
+export PORT_CLIENT_SECRET=<client secret>
 terraform -chdir=terraform plan
 terraform -chdir=terraform apply
 ```
