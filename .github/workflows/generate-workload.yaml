@@ -90,7 +90,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          identifier: "${{ inputs.workload_name }}_${{ inputs.environment }}"
+          identifier: "${{ inputs.workload_short_name }}_${{ inputs.environment }}"
           title: "${{ inputs.workload_name }} - ${{ inputs.environment }}"
           blueprint: "workload"
           relations: |
