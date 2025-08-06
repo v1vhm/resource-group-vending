@@ -1,0 +1,130 @@
+name: Provision Workload
+
+on:
+  workflow_dispatch:
+    inputs:
+      workload_name:
+        description: 'Workload name'
+        required: true
+      workload_short_name:
+        description: 'Short name used for the file name'
+        required: true
+      location:
+        description: 'Azure region'
+        required: true
+        default: 'eastus'
+      network_size:
+        description: 'Network size (small|medium|large)'
+        required: true
+        default: 'small'
+      environment:
+        description: 'Environment (dev|test|prod)'
+        required: true
+        default: 'dev'
+      service_identifier:
+        description: 'Service identifier'
+        required: true
+      port_context:
+        required: true
+        description: Includes the action's run id
+        type: string
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
+      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+    steps:
+      - name: Start run
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Provisioning started'
+
+      - uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURECLIENTID }}
+          tenant-id: ${{ secrets.AZURETENANTID }}
+          subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create workload file
+        run: |
+          cat <<'EOF' > workloads/${{ inputs.workload_short_name }}.yaml
+          workload_name: ${{ inputs.workload_name }}
+          workload_short_name: ${{ inputs.workload_short_name }}
+          location: ${{ inputs.location }}
+          network_size: ${{ inputs.network_size }}
+          environment: ${{ inputs.environment }}
+          service_identifier: ${{ inputs.service_identifier }}
+          github:
+            org: ${{ github.repository_owner }}
+            repo: ${{ github.event.repository.name }}
+            entity: environment
+            entity_name: ${{ inputs.workload_short_name }}
+          EOF
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform apply -auto-approve
+
+      - name: Capture outputs
+        run: terraform -chdir=terraform output -json > tfoutput.json
+
+      - name: Append outputs to workload file
+        run: |
+          RGID=$(jq -r ".resource_group_ids.value[\"${{ inputs.workload_short_name }}\"]" tfoutput.json)
+          echo "resource_group_id: $RGID" >> workloads/${{ inputs.workload_short_name }}.yaml
+
+      - name: Commit workload file
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add workloads/${{ inputs.workload_short_name }}.yaml
+          git commit -m "Add workload ${{ inputs.workload_short_name }}"
+          git push origin HEAD:main
+
+      - name: Mark run success
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: SUCCESS
+          logMessage: 'Provisioning complete'
+
+      - name: Mark run failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Provisioning failed'

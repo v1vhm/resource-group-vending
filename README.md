@@ -1,7 +1,7 @@
 # Resource Group Vending
 
-This repository provisions Azure resource groups for lab workloads using Terraform.
-Each workload is described by a YAML file under `workloads/`.
+This repository provisions Azure resource groups for lab workloads using Terraform. 
+Workloads are provisioned through a GitHub Actions workflow triggered by Port. The workflow runs Terraform with the provided inputs and commits a YAML file under `workloads/` containing the configuration and generated resource group id.
 
 ## Workload YAML schema
 ```yaml
@@ -22,11 +22,8 @@ Managed identities and federated credentials are created automatically by Terraf
 The resource group is tagged with the workload name, short name, environment,
 GitHub organization and repository so that ownership is clear.
 
-## Adding a workload
-1. Copy `workloads/demo.yaml` and adjust values.
-2. Commit the new file and open a pull request.
-3. GitHub Actions will run `terraform plan`.
-4. On merge to `main`, the workflow applies the changes and creates the resource group, managed identity, and federated credential.
+## Provisioning a workload
+Port invokes the **Provision Workload** workflow with workload details. On success, the workflow provisions the resources and commits the corresponding YAML file to the repository.
 
 ## Running locally
 ```bash
