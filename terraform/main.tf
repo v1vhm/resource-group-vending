@@ -57,3 +57,7 @@ resource "port_entity" "environment" {
     }
   }
 }
+
+output "resource_group_ids" {
+  value = { for k, m in module.workloads : k => m.resource_group_id }
+}
