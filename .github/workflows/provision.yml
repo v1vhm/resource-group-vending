@@ -85,7 +85,7 @@ jobs:
           ORG=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f1)
           REPO=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f2)
           mkdir -p environments
-          cat <<EOF > environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
+          cat <<EOF > environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
           environment_name: ${{ inputs.service_name }}
           environment_short_name: ${{ inputs.service_short_name }}
           location: ${{ inputs.location }}
@@ -129,6 +129,14 @@ jobs:
           git add environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
           git commit -m "Add environment ${{ inputs.service_short_name }}_${{ inputs.environment }}"
           git push origin HEAD:main
+
+      - name: Create state container
+        run: |
+          az storage container create \
+            --name ${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }} }} \
+            --account-name vendingtfstate \
+            --resource-group v1vhm-rg-vending-prod-uks-001 \
+            --auth-mode login
 
       - name: Log start terraform init
         uses: port-labs/port-github-action@v1
