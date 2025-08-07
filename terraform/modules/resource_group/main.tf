@@ -56,7 +56,7 @@ resource "azurerm_federated_identity_credential" "github" {
 
 resource "port_entity" "resource_group" {
   blueprint  = "azureResourceGroup"
-  identifier = azurerm_resource_group.rg.name
+  identifier = azurerm_resource_group.rg.id
   title      = azurerm_resource_group.rg.name
 
   properties = {
@@ -75,7 +75,7 @@ resource "port_entity" "resource_group" {
 
 resource "port_entity" "storage_account" {
   blueprint  = "azureStorageAccount"
-  identifier = azurerm_storage_account.sa.name
+  identifier = azurerm_storage_account.sa.id
   title      = azurerm_storage_account.sa.name
 
   properties = {
@@ -98,11 +98,12 @@ resource "port_entity" "storage_account" {
 
 resource "port_entity" "user_managed_identity" {
   blueprint  = "azureUserManagedIdentity"
-  identifier = azurerm_user_assigned_identity.uai.name
+  identifier = azurerm_user_assigned_identity.uai.id
   title      = azurerm_user_assigned_identity.uai.name
 
   properties = {
     clientId = azurerm_user_assigned_identity.uai.client_id
+    tags     = azurerm_user_assigned_identity.uai.tags
   }
 
   relations = {
