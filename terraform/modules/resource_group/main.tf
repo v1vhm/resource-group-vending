@@ -66,9 +66,12 @@ resource "port_entity" "resource_group" {
 
   relations = {
     single_relations = {
+      environment  = "${var.service_identifier}_${var.environment}"
       subscription = data.azurerm_subscription.current.subscription_id
     }
   }
+
+  run_id = var.port_run_id
 }
 
 resource "port_entity" "storage_account" {
@@ -90,6 +93,8 @@ resource "port_entity" "storage_account" {
       resourceGroup = port_entity.resource_group.identifier
     }
   }
+
+  run_id = var.port_run_id
 }
 
 resource "port_entity" "user_managed_identity" {
@@ -106,8 +111,18 @@ resource "port_entity" "user_managed_identity" {
       resource_group = port_entity.resource_group.identifier
     }
   }
+
+  run_id = var.port_run_id
 }
 
 output "resource_group_id" {
   value = azurerm_resource_group.rg.id
+}
+
+output "resource_group_name" {
+  value = azurerm_resource_group.rg.name
+}
+
+output "user_managed_identity_name" {
+  value = azurerm_user_assigned_identity.uai.name
 }

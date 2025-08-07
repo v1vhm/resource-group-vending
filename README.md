@@ -10,6 +10,7 @@ environment_short_name: demoenv    # 6-10 chars, no spaces or special characters
 location: eastus
 environment: dev               # dev | test | prod
 service_identifier: svc-12345  # service identifier from Port
+port_run_id: abcde12345       # Port action run id
 github:
   org: my-org
   repo: resource-group-vending
