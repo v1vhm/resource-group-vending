@@ -10,7 +10,7 @@ terraform {
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-${var.environment_short_name}-${var.environment}"
+  name     = "rg-${var.environment_short_name}-${var.environment}-${var.environment}"
   location = var.location
   tags = {
     environment_name       = var.environment_name
@@ -32,7 +32,7 @@ resource "azurerm_storage_account" "sa" {
 }
 
 resource "azurerm_user_assigned_identity" "uai" {
-  name                = "uai-${var.environment_short_name}-${var.environment}"
+  name                = "uai-${var.environment_short_name}-${var.environment}-${var.location}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
 }
