@@ -58,7 +58,7 @@ resource "port_entity" "environment" {
   relations = {
     single_relations = {
       deployment_environment = module.environments[each.key].resource_group_name
-      deployment_identity    = module.environments[each.key].user_managed_identity_name
+      deployment_identity    = module.environments[each.key].user_managed_identity_id
       azure_subscription     = data.azurerm_subscription.current.id
     }
   }

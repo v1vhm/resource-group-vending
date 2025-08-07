@@ -122,6 +122,6 @@ output "resource_group_name" {
   value = azurerm_resource_group.rg.name
 }
 
-output "user_managed_identity_name" {
-  value = azurerm_user_assigned_identity.uai.name
+output "user_managed_identity_id" {
+  value = azurerm_user_assigned_identity.uai.id
 }
