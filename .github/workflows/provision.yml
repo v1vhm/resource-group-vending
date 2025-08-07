@@ -3,26 +3,25 @@ name: Provision Workload
 on:
   workflow_dispatch:
     inputs:
-      workload_name:
-        description: 'Workload name'
+      service_name:
+        description: 'Service name'
         required: true
-      workload_short_name:
+      service_short_name:
         description: 'Short name used for the file name'
         required: true
       location:
         description: 'Azure region'
         required: true
         default: 'eastus'
-      network_size:
-        description: 'Network size (small|medium|large)'
-        required: true
-        default: 'small'
       environment:
-        description: 'Environment (dev|test|prod)'
+        description: 'Environment'
         required: true
         default: 'dev'
       service_identifier:
         description: 'Service identifier'
+        required: true
+      github_repo:
+        description: 'GitHub repo in owner/repo format'
         required: true
       port_context:
         required: true
