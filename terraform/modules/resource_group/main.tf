@@ -15,7 +15,6 @@ resource "azurerm_resource_group" "rg" {
   tags = {
     environment_name       = var.environment_name
     environment_short_name = var.environment_short_name
-    network_size           = var.network_size
     environment            = var.environment
     service_identifier     = var.service_identifier
     github_org             = var.github_org
@@ -37,6 +36,8 @@ resource "azurerm_user_assigned_identity" "uai" {
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
 }
+
+data "azurerm_subscription" "current" {}
 
 resource "azurerm_role_assignment" "owner" {
   scope                = azurerm_resource_group.rg.id
@@ -65,7 +66,8 @@ resource "port_entity" "resource_group" {
 
   relations = {
     single_relations = {
-      environment = "${var.service_identifier}_${var.environment}"
+      environment  = "${var.service_identifier}_${var.environment}"
+      subscription = data.azurerm_subscription.current.subscription_id
     }
   }
 }
@@ -76,11 +78,12 @@ resource "port_entity" "storage_account" {
   title      = azurerm_storage_account.sa.name
 
   properties = {
-    location          = azurerm_storage_account.sa.location
-    isHnsEnabled      = azurerm_storage_account.sa.is_hns_enabled
-    primaryLocation   = azurerm_storage_account.sa.primary_location
-    secondaryLocation = azurerm_storage_account.sa.secondary_location
-    tags              = azurerm_storage_account.sa.tags
+    location              = azurerm_storage_account.sa.location
+    isHnsEnabled          = azurerm_storage_account.sa.is_hns_enabled
+    primaryLocation       = azurerm_storage_account.sa.primary_location
+    secondaryLocation     = azurerm_storage_account.sa.secondary_location
+    allowBlobPublicAccess = azurerm_storage_account.sa.allow_nested_items_to_be_public
+    tags                  = azurerm_storage_account.sa.tags
   }
 
   relations = {

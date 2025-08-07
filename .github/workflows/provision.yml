@@ -40,6 +40,8 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
       PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
