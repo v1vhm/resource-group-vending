@@ -66,42 +66,136 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
+      - name: Log start workload file creation
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting workload file creation'
+
       - name: Create workload file
         run: |
-          cat <<'EOF' > workloads/${{ inputs.workload_short_name }}.yaml
-          workload_name: ${{ inputs.workload_name }}
-          workload_short_name: ${{ inputs.workload_short_name }}
+          ORG=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f1)
+          REPO=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f2)
+          cat <<EOF > workloads/${{ inputs.service_short_name }}.yaml
+          workload_name: ${{ inputs.service_name }}
+          workload_short_name: ${{ inputs.service_short_name }}
           location: ${{ inputs.location }}
-          network_size: ${{ inputs.network_size }}
           environment: ${{ inputs.environment }}
           service_identifier: ${{ inputs.service_identifier }}
           github:
-            org: ${{ github.repository_owner }}
-            repo: ${{ github.event.repository.name }}
+            org: $ORG
+            repo: $REPO
             entity: environment
-            entity_name: ${{ inputs.workload_short_name }}
+            entity_name: ${{ inputs.service_short_name }}
           EOF
+
+      - name: Log start terraform init
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting Terraform Init'
 
       - name: Terraform Init
         run: terraform -chdir=terraform init
 
+      - name: Log start terraform plan
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting Terraform Plan'
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform -chdir=terraform plan -no-color > plan.log
+          echo "plan<<EOF" >> $GITHUB_OUTPUT
+          cat plan.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Log plan output
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: ${{ steps.plan.outputs.plan }}
+
+      - name: Log start terraform apply
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting Terraform Apply'
+
       - name: Terraform Apply
-        run: terraform -chdir=terraform apply -auto-approve
+        id: apply
+        run: |
+          terraform -chdir=terraform apply -auto-approve -no-color > apply.log
+          echo "apply<<EOF" >> $GITHUB_OUTPUT
+          cat apply.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Log apply output
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: ${{ steps.apply.outputs.apply }}
 
       - name: Capture outputs
         run: terraform -chdir=terraform output -json > tfoutput.json
 
+      - name: Log start append outputs
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Appending Terraform outputs to workload file'
+
       - name: Append outputs to workload file
         run: |
-          RGID=$(jq -r ".resource_group_ids.value[\"${{ inputs.workload_short_name }}\"]" tfoutput.json)
-          echo "resource_group_id: $RGID" >> workloads/${{ inputs.workload_short_name }}.yaml
+          RGID=$(jq -r ".resource_group_ids.value[\"${{ inputs.service_short_name }}\"]" tfoutput.json)
+          echo "resource_group_id: $RGID" >> workloads/${{ inputs.service_short_name }}.yaml
+
+      - name: Log start commit workload file
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Committing workload file'
 
       - name: Commit workload file
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add workloads/${{ inputs.workload_short_name }}.yaml
-          git commit -m "Add workload ${{ inputs.workload_short_name }}"
+          git add workloads/${{ inputs.service_short_name }}.yaml
+          git commit -m "Add workload ${{ inputs.service_short_name }}"
           git push origin HEAD:main
 
       - name: Mark run success
