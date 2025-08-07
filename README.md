@@ -8,7 +8,6 @@ Environments are provisioned through a GitHub Actions workflow triggered by Port
 environment_name: Demo Environment
 environment_short_name: demoenv    # 6-10 chars, no spaces or special characters
 location: eastus
-network_size: small            # small | medium | large
 environment: dev               # dev | test | prod
 service_identifier: svc-12345  # service identifier from Port
 github:

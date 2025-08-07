@@ -1,7 +1,6 @@
 environment_name: Demo Environment
 environment_short_name: demoenv
 location: eastus
-network_size: small
 environment: dev
 service_identifier: svc-12345
 github:

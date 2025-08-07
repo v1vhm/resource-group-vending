@@ -16,9 +16,7 @@ provider "azurerm" {
   features {}
 }
 
-provider "port" {
-  # Credentials are read from PORT_CLIENT_ID and PORT_CLIENT_SECRET
-}
+provider "port" {}
 
 locals {
   environment_files = fileset("${path.module}/../environments", "*.yaml")
@@ -35,7 +33,6 @@ module "environments" {
   environment_name       = each.value.environment_name
   environment_short_name = each.value.environment_short_name
   location               = each.value.location
-  network_size           = each.value.network_size
   environment            = each.value.environment
   service_identifier     = each.value.service_identifier
   github_org             = each.value.github.org
