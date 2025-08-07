@@ -102,7 +102,7 @@ resource "port_entity" "user_managed_identity" {
   title      = azurerm_user_assigned_identity.uai.name
 
   properties = {
-    clientId = azurerm_user_assigned_identity.uai.client_id
+    clientId = azurerm_user_assigned_identity.uai.clientId
   }
 
   relations = {
