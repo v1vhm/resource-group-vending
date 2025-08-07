@@ -10,7 +10,7 @@ terraform {
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-${var.environment_short_name}-${var.environment}-${var.environment}"
+  name     = "rg-${var.environment_short_name}-${var.environment}-${var.location}"
   location = var.location
   tags = {
     environment_name       = var.environment_name
@@ -66,7 +66,7 @@ resource "port_entity" "resource_group" {
 
   relations = {
     single_relations = {
-      subscription = data.azurerm_subscription.current.subscription_id
+      subscription = data.azurerm_subscription.current.id
     }
   }
 
