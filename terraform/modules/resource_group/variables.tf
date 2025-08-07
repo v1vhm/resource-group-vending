@@ -1,5 +1,5 @@
-variable "workload_name" { type = string }
-variable "workload_short_name" { type = string }
+variable "environment_name" { type = string }
+variable "environment_short_name" { type = string }
 variable "location" { type = string }
 variable "network_size" { type = string }
 variable "environment" { type = string }

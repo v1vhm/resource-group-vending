@@ -1,19 +1,19 @@
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-${var.workload_short_name}-${var.environment}"
+  name     = "rg-${var.environment_short_name}-${var.environment}"
   location = var.location
   tags = {
-    workload_name       = var.workload_name
-    workload_short_name = var.workload_short_name
-    network_size        = var.network_size
-    environment         = var.environment
-    service_identifier  = var.service_identifier
-    github_org          = var.github_org
-    github_repo         = var.github_repo
+    environment_name       = var.environment_name
+    environment_short_name = var.environment_short_name
+    network_size           = var.network_size
+    environment            = var.environment
+    service_identifier     = var.service_identifier
+    github_org             = var.github_org
+    github_repo            = var.github_repo
   }
 }
 
 resource "azurerm_user_assigned_identity" "uai" {
-  name                = "uai-${var.workload_short_name}-${var.environment}"
+  name                = "uai-${var.environment_short_name}-${var.environment}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
 }
@@ -25,7 +25,7 @@ resource "azurerm_role_assignment" "owner" {
 }
 
 resource "azurerm_federated_identity_credential" "github" {
-  name                = "fic-${var.workload_short_name}-${var.environment}"
+  name                = "fic-${var.environment_short_name}-${var.environment}"
   resource_group_name = azurerm_resource_group.rg.name
   parent_id           = azurerm_user_assigned_identity.uai.id
   issuer              = "https://token.actions.githubusercontent.com"

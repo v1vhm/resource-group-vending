@@ -21,31 +21,31 @@ provider "port" {
 }
 
 locals {
-  workload_files = fileset("${path.module}/../workloads", "*.yaml")
-  workloads = {
-    for file in local.workload_files :
-    trimsuffix(basename(file), ".yaml") => yamldecode(file("${path.module}/../workloads/${file}"))
+  environment_files = fileset("${path.module}/../environments", "*.yaml")
+  environments = {
+    for file in local.environment_files :
+    trimsuffix(basename(file), ".yaml") => yamldecode(file("${path.module}/../environments/${file}"))
   }
 }
 
-module "workloads" {
+module "environments" {
   source   = "./modules/resource_group"
-  for_each = local.workloads
+  for_each = local.environments
 
-  workload_name       = each.value.workload_name
-  workload_short_name = each.value.workload_short_name
-  location            = each.value.location
-  network_size        = each.value.network_size
-  environment         = each.value.environment
-  service_identifier  = each.value.service_identifier
-  github_org          = each.value.github.org
-  github_repo         = each.value.github.repo
-  github_entity       = each.value.github.entity
-  github_entity_name  = each.value.github.entity_name
+  environment_name       = each.value.environment_name
+  environment_short_name = each.value.environment_short_name
+  location               = each.value.location
+  network_size           = each.value.network_size
+  environment            = each.value.environment
+  service_identifier     = each.value.service_identifier
+  github_org             = each.value.github.org
+  github_repo            = each.value.github.repo
+  github_entity          = each.value.github.entity
+  github_entity_name     = each.value.github.entity_name
 }
 
 resource "port_entity" "environment" {
-  for_each = local.workloads
+  for_each = local.environments
 
   blueprint  = "environment"
   identifier = "${each.value.service_identifier}_${each.value.environment}"
@@ -53,11 +53,11 @@ resource "port_entity" "environment" {
 
   relations = {
     single_relations = {
-      workload = "${each.value.workload_name}_${each.value.environment}"
+      environment = "${each.value.environment_name}_${each.value.environment}"
     }
   }
 }
 
 output "resource_group_ids" {
-  value = { for k, m in module.workloads : k => m.resource_group_id }
+  value = { for k, m in module.environments : k => m.resource_group_id }
 }
