@@ -16,9 +16,9 @@ provider "azurerm" {
   features {}
 }
 
-provider "port" {
-  # Credentials are read from PORT_CLIENT_ID and PORT_CLIENT_SECRET
-}
+provider "port" {}
+
+data "azurerm_subscription" "current" {}
 
 locals {
   environment_files = fileset("${path.module}/../environments", "*.yaml")
@@ -35,13 +35,13 @@ module "environments" {
   environment_name       = each.value.environment_name
   environment_short_name = each.value.environment_short_name
   location               = each.value.location
-  network_size           = each.value.network_size
   environment            = each.value.environment
   service_identifier     = each.value.service_identifier
   github_org             = each.value.github.org
   github_repo            = each.value.github.repo
   github_entity          = each.value.github.entity
   github_entity_name     = each.value.github.entity_name
+  port_run_id            = var.port_run_id
 }
 
 resource "port_entity" "environment" {
@@ -51,11 +51,19 @@ resource "port_entity" "environment" {
   identifier = "${each.value.service_identifier}_${each.value.environment}"
   title      = "${each.value.service_identifier}-${each.value.environment}"
 
+  properties = {
+    environment_type = "Azure Resource Group"
+  }
+
   relations = {
     single_relations = {
-      environment = "${each.value.environment_name}_${each.value.environment}"
+      deployment_environment = module.environments[each.key].resource_group_name
+      deployment_identity    = module.environments[each.key].user_managed_identity_name
+      azure_subscription     = data.azurerm_subscription.current.subscription_id
     }
   }
+
+  run_id = var.port_run_id
 }
 
 output "resource_group_ids" {

@@ -40,6 +40,9 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
       PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
@@ -87,6 +90,7 @@ jobs:
           location: ${{ inputs.location }}
           environment: ${{ inputs.environment }}
           service_identifier: ${{ inputs.service_identifier }}
+          port_run_id: $PORT_RUN_ID
           github:
             org: $ORG
             repo: $REPO
@@ -106,6 +110,24 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: ${{ steps.create_env_file.outputs.file_content }}
+
+      - name: Log start initial commit environment file
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Committing environment file'
+
+      - name: Commit environment file
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add environments/${{ inputs.service_short_name }}.yaml
+          git commit -m "Add environment ${{ inputs.service_short_name }}"
+          git push origin HEAD:main
 
       - name: Log start terraform init
         uses: port-labs/port-github-action@v1
@@ -194,7 +216,7 @@ jobs:
           RGID=$(jq -r ".resource_group_ids.value[\"${{ inputs.service_short_name }}\"]" tfoutput.json)
           echo "resource_group_id: $RGID" >> environments/${{ inputs.service_short_name }}.yaml
 
-      - name: Log start commit environment file
+      - name: Log start commit updated environment file
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -202,14 +224,14 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Committing environment file'
+          logMessage: 'Committing updated environment file'
 
-      - name: Commit environment file
+      - name: Commit updated environment file
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add environments/${{ inputs.service_short_name }}.yaml
-          git commit -m "Add environment ${{ inputs.service_short_name }}"
+          git commit -m "Update environment ${{ inputs.service_short_name }} with outputs"
           git push origin HEAD:main
 
       - name: Mark run success

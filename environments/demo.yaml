@@ -1,9 +1,9 @@
 environment_name: Demo Environment
 environment_short_name: demoenv
 location: eastus
-network_size: small
 environment: dev
 service_identifier: svc-12345
+port_run_id: demo-run
 github:
   org: my-org
   repo: resource-group-vending
