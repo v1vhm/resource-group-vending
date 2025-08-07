@@ -66,7 +66,6 @@ resource "port_entity" "resource_group" {
 
   relations = {
     single_relations = {
-      environment  = "${var.service_identifier}_${var.environment}"
       subscription = data.azurerm_subscription.current.subscription_id
     }
   }
