@@ -98,7 +98,7 @@ jobs:
             entity_name: ${{ inputs.service_short_name }}
           EOF
           echo "file_content<<EOF" >> $GITHUB_OUTPUT
-          cat environments/${{ inputs.service_short_name }}.yaml >> $GITHUB_OUTPUT
+          cat environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Log environment file content
@@ -125,8 +125,8 @@ jobs:
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.service_short_name }}.yaml
-          git commit -m "Add environment ${{ inputs.service_short_name }}"
+          git add environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
+          git commit -m "Add environment ${{ inputs.service_short_name }}_${{ inputs.environment }}"
           git push origin HEAD:main
 
       - name: Log start terraform init
@@ -214,7 +214,7 @@ jobs:
       - name: Append outputs to environment file
         run: |
           RGID=$(jq -r ".resource_group_ids.value[\"${{ inputs.service_short_name }}\"]" tfoutput.json)
-          echo "resource_group_id: $RGID" >> environments/${{ inputs.service_short_name }}.yaml
+          echo "resource_group_id: $RGID" >> environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
 
       - name: Log start commit updated environment file
         uses: port-labs/port-github-action@v1
@@ -230,8 +230,8 @@ jobs:
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.service_short_name }}.yaml
-          git commit -m "Update environment ${{ inputs.service_short_name }} with outputs"
+          git add environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
+          git commit -m "Update environment ${{ inputs.service_short_name }}_${{ inputs.environment }} with outputs"
           git push origin HEAD:main
 
       - name: Mark run success
