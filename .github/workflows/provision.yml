@@ -84,6 +84,7 @@ jobs:
         run: |
           ORG=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f1)
           REPO=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f2)
+          mkdir -p environments
           cat <<EOF > environments/${{ inputs.service_short_name }}_${{ inputs.environment }}.yaml
           environment_name: ${{ inputs.service_name }}
           environment_short_name: ${{ inputs.service_short_name }}
