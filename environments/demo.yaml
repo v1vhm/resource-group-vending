@@ -1,5 +1,5 @@
-workload_name: Demo Workload
-workload_short_name: demowk
+environment_name: Demo Environment
+environment_short_name: demoenv
 location: eastus
 network_size: small
 environment: dev
@@ -8,4 +8,4 @@ github:
   org: my-org
   repo: resource-group-vending
   entity: environment
-  entity_name: demowk
+  entity_name: demoenv
