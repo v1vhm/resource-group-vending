@@ -4,6 +4,10 @@ This repository provisions Azure resource groups for lab or test environments us
 
 The goal of this guide is to help **Codex**, or any automated agent, make changes to the repository confidently and consistently.  It captures conventions, file structures and recent lessons learned so that future pull requests remain coherent.  Before making changes, read this document and the repository’s `README.md` to ensure you understand how the pieces fit together.
 
+## This file
+
+This is a living document - it should evolve as the repository revolves. You **must** consider if any changes to this file are required as part of any request made, and if changes are required, they should be proposed alongside any other changes to this codebase.
+
 ## Repository structure and responsibilities
 
 The high‑level layout is:
