@@ -45,6 +45,12 @@ resource "azurerm_role_assignment" "owner" {
   principal_id         = azurerm_user_assigned_identity.uai.principal_id
 }
 
+resource "azurerm_role_assignment" "storage_blob_data_contributor" {
+  scope                = azurerm_storage_account.sa.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.uai.principal_id
+}
+
 resource "azurerm_federated_identity_credential" "github" {
   name                = "fic-${var.environment_short_name}-${var.environment}"
   resource_group_name = azurerm_resource_group.rg.name
