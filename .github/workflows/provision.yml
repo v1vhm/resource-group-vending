@@ -55,7 +55,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Provisioning started'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Check for existing environment file
         id: check_env
@@ -87,7 +87,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURECLIENTID }}
           tenant-id: ${{ secrets.AZURETENANTID }}
