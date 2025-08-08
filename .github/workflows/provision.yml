@@ -139,24 +139,6 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: ${{ steps.create_env_file.outputs.file_content }}
 
-      - name: Log start initial commit environment file
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Committing environment file'
-
-      - name: Commit environment file
-        run: |
-          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
-          git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
-          git commit -m "Add environment ${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}"
-          git push origin HEAD:main
-
       - name: Create state container
         run: |
           az storage container create \
@@ -180,7 +162,7 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}" \
+            -backend-config="container_name=${{ inputs.service_short_name }}${{ inputs.environment }}${{ inputs.location }}" \
             -backend-config="key=${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
             -reconfigure
 
