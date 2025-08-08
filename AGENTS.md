@@ -40,6 +40,7 @@ When editing `.github/workflows/provision.yml` or adding new workflows:
 3. **Commit messages:** The workflow commits with messages like `Add environment <short_name>_<environment>` and later `Update environment <short_name>_<environment> with outputs`.  When changing commit logic, keep concise, imperative commit messages.  The commits are signed by GitHub; no action is required to maintain signatures.
 4. **Terraform state container:** The workflow creates an Azure Storage container for each environment using the naming pattern `${service_short_name}_${environment}_${location}`.  If you change the naming scheme, update `backend.tf` and ensure containers are created consistently.  Do not hardcode secrets; use repository secrets for credentials.
 5. **Logging to Port:** Many steps call `port-labs/port-github-action` to log messages or mark run status.  If you add new steps that perform long‑running tasks, consider adding a corresponding log entry so that Port users can follow progress.
+6. **File paths for Terraform:** Terraform commands run with `-chdir=terraform`. When passing file paths (e.g., the environment YAML) via variables, supply an absolute path so Terraform can locate the file regardless of the current working directory.
 
 ## Updating Terraform
 

@@ -43,7 +43,7 @@ jobs:
       TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      TF_VAR_environment_file: environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
