@@ -18,7 +18,7 @@ github:
   entity_name: demoenv          # e.g. environment name
 ```
 
-Managed identities and federated credentials are created automatically by Terraform.
+Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account.
 The resource group is tagged with the environment name, short name, environment,
 GitHub organization and repository so that ownership is clear.
 
