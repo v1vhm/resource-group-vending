@@ -10,6 +10,7 @@ updates:
       development-dependencies:
         dependency-type: 'development'
   - package-ecosystem: 'terraform'
-    directory: '/terraform/**'
+    directories:
+      - "**/*"
     schedule:
       interval: 'weekly'
