@@ -123,7 +123,7 @@ jobs:
             org: $ORG
             repo: $REPO
             entity: environment
-            entity_name: ${{ inputs.service_short_name }}
+            entity_name: ${{ inputs.environment }}
           EOF
           echo "file_content<<EOF" >> $GITHUB_OUTPUT
           cat environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml >> $GITHUB_OUTPUT
