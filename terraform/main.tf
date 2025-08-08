@@ -21,35 +21,28 @@ provider "port" {}
 data "azurerm_subscription" "current" {}
 
 locals {
-  environment_files = fileset("${path.module}/../environments", "*.yaml")
-  environments = {
-    for file in local.environment_files :
-    trimsuffix(basename(file), ".yaml") => yamldecode(file("${path.module}/../environments/${file}"))
-  }
+  environment = yamldecode(file(var.environment_file))
 }
 
-module "environments" {
-  source   = "./modules/resource_group"
-  for_each = local.environments
+module "environment" {
+  source = "./modules/resource_group"
 
-  environment_name       = each.value.environment_name
-  environment_short_name = each.value.environment_short_name
-  location               = each.value.location
-  environment            = each.value.environment
-  service_identifier     = each.value.service_identifier
-  github_org             = each.value.github.org
-  github_repo            = each.value.github.repo
-  github_entity          = each.value.github.entity
-  github_entity_name     = each.value.github.entity_name
+  environment_name       = local.environment.environment_name
+  environment_short_name = local.environment.environment_short_name
+  location               = local.environment.location
+  environment            = local.environment.environment
+  service_identifier     = local.environment.service_identifier
+  github_org             = local.environment.github.org
+  github_repo            = local.environment.github.repo
+  github_entity          = local.environment.github.entity
+  github_entity_name     = local.environment.github.entity_name
   port_run_id            = var.port_run_id
 }
 
 resource "port_entity" "environment" {
-  for_each = local.environments
-
   blueprint  = "environment"
-  identifier = "${each.value.service_identifier}_${each.value.environment}"
-  title      = "${each.value.service_identifier}-${each.value.environment}"
+  identifier = "${local.environment.service_identifier}_${local.environment.environment}_${local.environment.location}"
+  title      = "${local.environment.service_identifier}-${local.environment.environment}"
 
   properties = {
     environment_type = "Azure Resource Group"
@@ -57,8 +50,8 @@ resource "port_entity" "environment" {
 
   relations = {
     single_relations = {
-      deployment_environment = module.environments[each.key].resource_group_name
-      deployment_identity    = module.environments[each.key].user_managed_identity_id
+      deployment_environment = module.environment.resource_group_name
+      deployment_identity    = module.environment.user_managed_identity_id
       azure_subscription     = data.azurerm_subscription.current.id
     }
   }
@@ -66,6 +59,6 @@ resource "port_entity" "environment" {
   run_id = var.port_run_id
 }
 
-output "resource_group_ids" {
-  value = { for k, m in module.environments : k => m.resource_group_id }
+output "resource_group_id" {
+  value = module.environment.resource_group_id
 }
