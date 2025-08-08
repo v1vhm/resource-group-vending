@@ -160,7 +160,7 @@ jobs:
       - name: Create state container
         run: |
           az storage container create \
-            --name ${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }} \
+            --name ${{ inputs.service_short_name }}${{ inputs.environment }}${{ inputs.location }} \
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
