@@ -2,11 +2,12 @@ environment_name: my-new-microservice Service
 environment_short_name: mnms01
 location: uksouth
 environment: acct
-service_identifier: my-new-microservice_service
 port_run_id: r_FIhv65KR0vd3WtDo
-github:
-  org: v1vhm
-  repo: my-new-microservice
-  entity: environment
-  entity_name: acct
+services:
+  - service_identifier: my-new-microservice_service
+    github:
+      org: v1vhm
+      repo: my-new-microservice
+      entity: environment
+      entity_name: acct
 resource_group_id: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourceGroups/rg-mnms01-acct-uksouth

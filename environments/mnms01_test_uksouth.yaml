@@ -2,11 +2,12 @@ environment_name: my-new-microservice Service
 environment_short_name: mnms01
 location: uksouth
 environment: test
-service_identifier: my-new-microservice_service
 port_run_id: r_7guA3bXKxk3rpcL4
-github:
-  org: v1vhm
-  repo: my-new-microservice
-  entity: environment
-  entity_name: test
+services:
+  - service_identifier: my-new-microservice_service
+    github:
+      org: v1vhm
+      repo: my-new-microservice
+      entity: environment
+      entity_name: test
 resource_group_id: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourceGroups/rg-mnms01-test-uksouth
