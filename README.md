@@ -10,14 +10,11 @@ environment_short_name: demoenv    # 6-10 chars, no spaces or special characters
 location: eastus
 environment: dev               # dev | test | prod
 port_run_id: abcde12345       # Port action run id
-services:
-  - service_identifier: svc-12345  # service identifier from Port
-    github:
-      org: my-org
-      repo: resource-group-vending
-      entity: environment          # environment | branch | tag | pull_request
-      entity_name: demoenv          # e.g. environment name
+product_name: Demo Product
+product_identifier: prod-12345     # product identifier from Port
+services: []                       # optional; services can be associated later
 ```
+The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list.
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account.
 The resource group is tagged with the environment name, short name, environment,
