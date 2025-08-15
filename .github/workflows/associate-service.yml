@@ -121,7 +121,7 @@ jobs:
       - name: Terraform Plan
         run: terraform -chdir=terraform plan -no-color
 
-      - name: Terraform Apply
+      - name: Terraform Apply (update Port relations)
         run: terraform -chdir=terraform apply -auto-approve -no-color
 
       - name: Mark run success

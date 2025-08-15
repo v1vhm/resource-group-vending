@@ -56,6 +56,9 @@ resource "port_entity" "environment" {
       azure_subscription     = data.azurerm_subscription.current.id
       product                = local.product_identifier
     }
+    many_relations = length(local.services) > 0 ? {
+      deployed_service = [for s in local.services : s.service_identifier]
+    } : null
   }
 
   run_id = var.port_run_id
