@@ -1,0 +1,148 @@
+# yamllint disable rule:line-length rule:truthy
+---
+name: Associate Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_short_name:
+        description: 'Short name used for the file name'
+        required: true
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+      location:
+        description: 'Azure region'
+        required: true
+        default: 'eastus'
+      service_identifier:
+        description: 'Service identifier'
+        required: true
+      github_repo:
+        description: 'GitHub repository (org/repo)'
+        required: true
+
+jobs:
+  associate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
+      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load environment context
+        run: |
+          ENV_FILE=environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Environment file not found" >&2
+            exit 1
+          fi
+          PORT_RUN_ID=$(grep '^port_run_id:' "$ENV_FILE" | awk '{print $2}')
+          PRODUCT_IDENTIFIER=$(grep '^product_identifier:' "$ENV_FILE" | awk '{print $2}')
+          echo "PORT_RUN_ID=$PORT_RUN_ID" >> $GITHUB_ENV
+          echo "TF_VAR_port_run_id=$PORT_RUN_ID" >> $GITHUB_ENV
+          echo "PRODUCT_IDENTIFIER=$PRODUCT_IDENTIFIER" >> $GITHUB_ENV
+
+      - name: Start run
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Service association started'
+
+      - name: Update services list
+        run: |
+          pip install pyyaml
+          cat <<'PY' > update_service.py
+            import yaml, os
+            env_file = os.environ['ENV_FILE']
+            service_id = os.environ['SERVICE_ID']
+            github_repo = os.environ['GITHUB_REPO']
+            with open(env_file) as f:
+                data = yaml.safe_load(f) or {}
+            services = data.get('services', [])
+            for svc in services:
+                if svc.get('service_identifier') == service_id:
+                    svc['github'] = {'repository': github_repo}
+                    break
+            else:
+                services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
+            data['services'] = services
+            with open(env_file, 'w') as f:
+                yaml.dump(data, f, sort_keys=False)
+          PY
+          sed -i 's/^ *//' update_service.py
+          python update_service.py
+        env:
+          ENV_FILE: ${{ github.workspace }}/environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          SERVICE_ID: ${{ inputs.service_identifier }}
+          GITHUB_REPO: ${{ inputs.github_repo }}
+
+      - name: Commit updated environment file
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}"
+          git push origin HEAD:main
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURECLIENTID }}
+          tenant-id: ${{ secrets.AZURETENANTID }}
+          subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform init \
+            -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
+            -backend-config="storage_account_name=vendingtfstate" \
+            -backend-config="container_name=${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" \
+            -backend-config="key=${PRODUCT_IDENTIFIER}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
+            -reconfigure
+
+      - name: Terraform Plan
+        run: terraform -chdir=terraform plan -no-color
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform apply -auto-approve -no-color
+
+      - name: Mark run success
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Service association complete'
+
+      - name: Mark run failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Service association failed'
