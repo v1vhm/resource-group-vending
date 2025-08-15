@@ -17,6 +17,9 @@ on:
       port_run_id:
         description: 'Port action run id'
         required: true
+      request_identifier:
+        description: 'Request identifier that triggered this workflow'
+        required: true
 
 jobs:
   associate:
@@ -141,6 +144,21 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Service association complete'
+
+      - name: Update request status
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          blueprint: request
+          identifier: ${{ inputs.request_identifier }}
+          properties: |
+            {
+              "status": "Configuring Service"
+            }
 
       - name: Mark run failure
         if: failure()

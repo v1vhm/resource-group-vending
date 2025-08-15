@@ -31,8 +31,10 @@ Run the **Associate Service** workflow to link a service to an environment. It r
 - `service_identifier` – unique service id
 - `github_repo` – repository in `org/repo` format
 - `port_run_id` – Port action run id for this association
+- `request_identifier` – Port request that triggered the workflow
 
 The workflow updates the environment manifest with the service information and replaces the `port_run_id` with the supplied value.
+After a successful run it also updates the request status to `Configuring Service` in Port.
 
 ## Running locally
 ```bash
