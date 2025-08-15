@@ -23,6 +23,17 @@ GitHub organization and repository so that ownership is clear.
 ## Provisioning an environment
 Port invokes the **Provision Environment** workflow with environment details. On success, the workflow provisions the resources and commits the corresponding YAML file to the repository.
 
+## Associating a service
+
+Run the **Associate Service** workflow to link a service to an environment. It requires the following inputs:
+
+- `environment_identifier` – `<productidentifier>_<environment>_<location>`
+- `service_identifier` – unique service id
+- `github_repo` – repository in `org/repo` format
+- `port_run_id` – Port action run id for this association
+
+The workflow updates the environment manifest with the service information and replaces the `port_run_id` with the supplied value.
+
 ## Running locally
 ```bash
 terraform -chdir=terraform init
