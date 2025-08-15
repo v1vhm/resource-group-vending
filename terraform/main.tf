@@ -31,18 +31,16 @@ module "environment" {
   environment_short_name = local.environment.environment_short_name
   location               = local.environment.location
   environment            = local.environment.environment
-  service_identifier     = local.environment.service_identifier
-  github_org             = local.environment.github.org
-  github_repo            = local.environment.github.repo
-  github_entity          = local.environment.github.entity
-  github_entity_name     = local.environment.github.entity_name
+  product_name           = local.environment.product_name
+  product_identifier     = local.environment.product_identifier
+  services               = try(local.environment.services, [])
   port_run_id            = var.port_run_id
 }
 
 resource "port_entity" "environment" {
   blueprint  = "environment"
-  identifier = "${local.environment.service_identifier}_${local.environment.environment}_${local.environment.location}"
-  title      = "${local.environment.service_identifier}-${local.environment.environment}"
+  identifier = "${local.environment.product_identifier}_${local.environment.environment}_${local.environment.location}"
+  title      = "${local.environment.product_identifier}-${local.environment.environment}"
 
   properties = {
     environment_type = "Azure Resource Group"
