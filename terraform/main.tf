@@ -42,8 +42,8 @@ module "environment" {
 
 resource "port_entity" "environment" {
   blueprint  = "environment"
-  identifier = "${local.product_identifier}_${local.environment.environment}"
-  title      = "${local.product_identifier}-${local.environment.environment}"
+  identifier = "${local.product_identifier}_${local.environment.environment}_${local.environment.location}"
+  title      = "${local.product_identifier}-${local.environment.environment}-${local.environment.location}"
 
   properties = {
     environment_type = "Azure Resource Group"
