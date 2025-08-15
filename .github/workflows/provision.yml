@@ -131,10 +131,15 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: ${{ steps.create_env_file.outputs.file_content }}
 
+      - name: Set storage container name
+        run: |
+          CONTAINER_NAME=$(echo "${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+
       - name: Create state container
         run: |
           az storage container create \
-            --name ${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }} \
+            --name $CONTAINER_NAME \
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
@@ -154,7 +159,7 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
             -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
             -reconfigure
 
