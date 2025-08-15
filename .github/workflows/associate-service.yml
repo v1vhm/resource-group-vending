@@ -51,6 +51,11 @@ jobs:
           echo "LOCATION=$LOCATION" >> $GITHUB_ENV
           echo "ENV_SHORT_NAME=$ENV_SHORT_NAME" >> $GITHUB_ENV
 
+      - name: Set storage container name
+        run: |
+          CONTAINER_NAME=$(echo "${ENV_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+
       - name: Start run
         uses: port-labs/port-github-action@v1
         with:
@@ -112,7 +117,7 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${ENV_SHORT_NAME}${ENVIRONMENT}${LOCATION}" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
             -backend-config="key=${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate" \
             -reconfigure
 
