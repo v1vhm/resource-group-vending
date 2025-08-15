@@ -2,9 +2,18 @@ variable "environment_name" { type = string }
 variable "environment_short_name" { type = string }
 variable "location" { type = string }
 variable "environment" { type = string }
-variable "service_identifier" { type = string }
-variable "github_org" { type = string }
-variable "github_repo" { type = string }
-variable "github_entity" { type = string }
-variable "github_entity_name" { type = string }
+variable "product_identifier" { type = string }
+variable "product_name" { type = string }
+variable "services" {
+  type = list(object({
+    service_identifier = string
+    github = object({
+      org         = string
+      repo        = string
+      entity      = string
+      entity_name = string
+    })
+  }))
+  default = []
+}
 variable "port_run_id" { type = string }

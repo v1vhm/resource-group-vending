@@ -16,9 +16,8 @@ resource "azurerm_resource_group" "rg" {
     environment_name       = var.environment_name
     environment_short_name = var.environment_short_name
     environment            = var.environment
-    service_identifier     = var.service_identifier
-    github_org             = var.github_org
-    github_repo            = var.github_repo
+    product_identifier     = var.product_identifier
+    product_name           = var.product_name
   }
 }
 
@@ -52,11 +51,12 @@ resource "azurerm_role_assignment" "storage_blob_data_contributor" {
 }
 
 resource "azurerm_federated_identity_credential" "github" {
-  name                = "fic-${var.environment_short_name}-${var.environment}"
+  for_each            = { for s in var.services : s.service_identifier => s }
+  name                = "fic-${var.environment_short_name}-${var.environment}-${each.key}"
   resource_group_name = azurerm_resource_group.rg.name
   parent_id           = azurerm_user_assigned_identity.uai.id
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.github_org}/${var.github_repo}:${var.github_entity}:${var.github_entity_name}"
+  subject             = "repo:${each.value.github.org}/${each.value.github.repo}:${each.value.github.entity}:${each.value.github.entity_name}"
   audience            = ["api://AzureADTokenExchange"]
 }
 
