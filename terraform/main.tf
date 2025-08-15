@@ -21,7 +21,10 @@ provider "port" {}
 data "azurerm_subscription" "current" {}
 
 locals {
-  environment = yamldecode(file(var.environment_file))
+  environment        = yamldecode(file(var.environment_file))
+  product_name       = local.environment.product_name
+  product_identifier = local.environment.product_identifier
+  services           = try(local.environment.services, [])
 }
 
 module "environment" {
@@ -31,16 +34,16 @@ module "environment" {
   environment_short_name = local.environment.environment_short_name
   location               = local.environment.location
   environment            = local.environment.environment
-  product_name           = local.environment.product_name
-  product_identifier     = local.environment.product_identifier
-  services               = try(local.environment.services, [])
+  product_name           = local.product_name
+  product_identifier     = local.product_identifier
+  services               = local.services
   port_run_id            = var.port_run_id
 }
 
 resource "port_entity" "environment" {
   blueprint  = "environment"
-  identifier = "${local.environment.product_identifier}_${local.environment.environment}_${local.environment.location}"
-  title      = "${local.environment.product_identifier}-${local.environment.environment}"
+  identifier = "${local.product_identifier}_${local.environment.environment}"
+  title      = "${local.product_identifier}-${local.environment.environment}"
 
   properties = {
     environment_type = "Azure Resource Group"
@@ -51,6 +54,7 @@ resource "port_entity" "environment" {
       deployment_environment = module.environment.resource_group_id
       deployment_identity    = module.environment.user_managed_identity_id
       azure_subscription     = data.azurerm_subscription.current.id
+      product                = local.product_identifier
     }
   }
 
