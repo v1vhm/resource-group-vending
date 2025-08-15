@@ -3,10 +3,10 @@ name: Provision Environment
 on:
   workflow_dispatch:
     inputs:
-      service_name:
-        description: 'Service name'
+      product_name:
+        description: 'Product name'
         required: true
-      service_short_name:
+      product_short_name:
         description: 'Short name used for the file name'
         required: true
       location:
@@ -17,11 +17,8 @@ on:
         description: 'Environment'
         required: true
         default: 'dev'
-      service_identifier:
-        description: 'Service identifier'
-        required: true
-      github_repo:
-        description: 'GitHub repo in owner/repo format'
+      product_identifier:
+        description: 'Product identifier'
         required: true
       port_context:
         required: true
@@ -43,7 +40,7 @@ jobs:
       TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
@@ -53,14 +50,14 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Provisioning started'
+          logMessage: 'Product provisioning started'
 
       - uses: actions/checkout@v4
 
       - name: Check for existing environment file
         id: check_env
         run: |
-          if [ -f environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml ]; then
+          if [ -f environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
@@ -76,7 +73,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Environment file already exists'
+          logMessage: 'Product environment file already exists'
 
       - name: Stop if environment file exists
         if: steps.check_env.outputs.exists == 'true'
@@ -104,29 +101,24 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting environment file creation'
+          logMessage: 'Starting product environment file creation'
 
       - name: Create environment file
         id: create_env_file
         run: |
-          ORG=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f1)
-          REPO=$(echo "${{ inputs.github_repo }}" | cut -d'/' -f2)
           mkdir -p environments
-          cat <<EOF > environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
-          environment_name: ${{ inputs.service_name }}
-          environment_short_name: ${{ inputs.service_short_name }}
+          cat <<EOF > environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          environment_name: ${{ inputs.product_name }}
+          environment_short_name: ${{ inputs.product_short_name }}
           location: ${{ inputs.location }}
           environment: ${{ inputs.environment }}
-          service_identifier: ${{ inputs.service_identifier }}
           port_run_id: $PORT_RUN_ID
-          github:
-            org: $ORG
-            repo: $REPO
-            entity: environment
-            entity_name: ${{ inputs.environment }}
+          product_name: ${{ inputs.product_name }}
+          product_identifier: ${{ inputs.product_identifier }}
+          services: []
           EOF
           echo "file_content<<EOF" >> $GITHUB_OUTPUT
-          cat environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml >> $GITHUB_OUTPUT
+          cat environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Log environment file content
@@ -142,7 +134,7 @@ jobs:
       - name: Create state container
         run: |
           az storage container create \
-            --name ${{ inputs.service_short_name }}${{ inputs.environment }}${{ inputs.location }} \
+            --name ${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }} \
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
@@ -162,8 +154,8 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${{ inputs.service_short_name }}${{ inputs.environment }}${{ inputs.location }}" \
-            -backend-config="key=${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
+            -backend-config="container_name=${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" \
+            -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
             -reconfigure
 
       - name: Log start terraform plan
@@ -233,12 +225,12 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Appending Terraform outputs to environment file'
+          logMessage: 'Appending Terraform outputs to product environment file'
 
       - name: Append outputs to environment file
         run: |
           RGID=$(jq -r '.resource_group_id.value' tfoutput.json)
-          echo "resource_group_id: $RGID" >> environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          echo "resource_group_id: $RGID" >> environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
 
       - name: Log start commit updated environment file
         uses: port-labs/port-github-action@v1
@@ -248,14 +240,14 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Committing updated environment file'
+          logMessage: 'Committing updated product environment file'
 
       - name: Commit updated environment file
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
-          git commit -m "Update environment ${{ inputs.service_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
+          git add environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
           git push origin HEAD:main
 
       - name: Mark run success
@@ -267,7 +259,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Provisioning complete'
+          logMessage: 'Product provisioning complete'
 
       - name: Mark run failure
         if: failure()
@@ -279,4 +271,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Provisioning failed'
+          logMessage: 'Product provisioning failed'
