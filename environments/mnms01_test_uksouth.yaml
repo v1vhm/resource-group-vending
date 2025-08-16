@@ -1,8 +1,0 @@
-environment_name: my-new-microservice Service
-environment_short_name: mnms01
-location: uksouth
-environment: test
-port_run_id: r_7guA3bXKxk3rpcL4
-product_name: my-new-microservice Product
-product_identifier: my-new-microservice_product
-resource_group_id: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourceGroups/rg-mnms01-test-uksouth
