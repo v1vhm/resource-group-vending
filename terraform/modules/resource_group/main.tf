@@ -62,7 +62,7 @@ resource "azurerm_federated_identity_credential" "github" {
 
 resource "port_entity" "resource_group" {
   blueprint  = "azureResourceGroup"
-  identifier = azurerm_resource_group.rg.id
+  identifier = lower(azurerm_resource_group.rg.id)
   title      = azurerm_resource_group.rg.name
 
   properties = {
@@ -72,7 +72,7 @@ resource "port_entity" "resource_group" {
 
   relations = {
     single_relations = {
-      subscription = data.azurerm_subscription.current.id
+      subscription = lower(data.azurerm_subscription.current.id)
     }
   }
 
@@ -81,7 +81,7 @@ resource "port_entity" "resource_group" {
 
 resource "port_entity" "storage_account" {
   blueprint  = "azureStorageAccount"
-  identifier = azurerm_storage_account.sa.id
+  identifier = lower(azurerm_storage_account.sa.id)
   title      = azurerm_storage_account.sa.name
 
   properties = {
@@ -95,7 +95,7 @@ resource "port_entity" "storage_account" {
 
   relations = {
     single_relations = {
-      resourceGroup = port_entity.resource_group.identifier
+      resourceGroup = lower(port_entity.resource_group.identifier)
     }
   }
 
@@ -104,7 +104,7 @@ resource "port_entity" "storage_account" {
 
 resource "port_entity" "user_managed_identity" {
   blueprint  = "azureUserManagedIdentity"
-  identifier = azurerm_user_assigned_identity.uai.id
+  identifier = lower(azurerm_user_assigned_identity.uai.id)
   title      = azurerm_user_assigned_identity.uai.name
 
   properties = {
@@ -114,7 +114,7 @@ resource "port_entity" "user_managed_identity" {
 
   relations = {
     single_relations = {
-      resource_group = port_entity.resource_group.identifier
+      resource_group = lower(port_entity.resource_group.identifier)
     }
   }
 
@@ -122,7 +122,7 @@ resource "port_entity" "user_managed_identity" {
 }
 
 output "resource_group_id" {
-  value = azurerm_resource_group.rg.id
+  value = lower(azurerm_resource_group.rg.id)
 }
 
 output "resource_group_name" {
@@ -130,5 +130,5 @@ output "resource_group_name" {
 }
 
 output "user_managed_identity_id" {
-  value = azurerm_user_assigned_identity.uai.id
+  value = lower(azurerm_user_assigned_identity.uai.id)
 }
