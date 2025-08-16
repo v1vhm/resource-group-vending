@@ -1,7 +1,7 @@
 # Resource Group Vending
 
 This repository provisions Azure resource groups for lab environments using Terraform.
-Environments are provisioned through a GitHub Actions workflow triggered by Port. The workflow runs Terraform with the provided inputs and commits a YAML file under `environments/` containing the configuration and generated resource group id.
+Environments are provisioned through a GitHub Actions workflow triggered by Port. The workflow runs Terraform with the provided inputs and commits a YAML file under `environments/` containing the configuration and identifiers for the created resources.
 
 ## Environment YAML schema
 ```yaml
@@ -13,8 +13,12 @@ port_run_id: abcde12345       # Port action run id
 product_name: Demo Product
 product_identifier: prod-12345     # product identifier from Port
 services: []                       # optional; services can be associated later
+deployment_environment: /subscriptions/.../resourceGroups/rg-demoenv-dev-eastus
+deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai-demoenv-dev-eastus
+azure_subscription: /subscriptions/...      # subscription id
+product: prod-12345
 ```
-The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list.
+The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. The fields `deployment_environment`, `deployment_identity`, `azure_subscription` and `product` are appended after provisioning and are used to create the Port environment entity outside of Terraform.
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account.
 The resource group is tagged with the environment name, short name, environment,
