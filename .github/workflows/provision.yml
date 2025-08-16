@@ -234,8 +234,16 @@ jobs:
 
       - name: Append outputs to environment file
         run: |
-          RGID=$(jq -r '.resource_group_id.value' tfoutput.json)
-          echo "resource_group_id: $RGID" >> environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          DEPLOYMENT_ENV=$(jq -r '.deployment_environment.value' tfoutput.json)
+          DEPLOYMENT_IDENTITY=$(jq -r '.deployment_identity.value' tfoutput.json)
+          AZURE_SUBSCRIPTION=$(jq -r '.azure_subscription.value' tfoutput.json)
+          PRODUCT=$(jq -r '.product.value' tfoutput.json)
+          {
+            echo "deployment_environment: $DEPLOYMENT_ENV"
+            echo "deployment_identity: $DEPLOYMENT_IDENTITY"
+            echo "azure_subscription: $AZURE_SUBSCRIPTION"
+            echo "product: $PRODUCT"
+          } >> environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
 
       - name: Log start commit updated environment file
         uses: port-labs/port-github-action@v1
