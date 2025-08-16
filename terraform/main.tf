@@ -40,30 +40,18 @@ module "environment" {
   port_run_id            = var.port_run_id
 }
 
-resource "port_entity" "environment" {
-  blueprint  = "environment"
-  identifier = "${local.product_identifier}_${local.environment.environment}_${local.environment.location}"
-  title      = "${local.product_identifier}-${local.environment.environment}-${local.environment.location}"
-
-  properties = {
-    environment_type = "Azure Resource Group"
-  }
-
-  relations = {
-    single_relations = {
-      deployment_environment = module.environment.resource_group_id
-      deployment_identity    = module.environment.user_managed_identity_id
-      azure_subscription     = lower(data.azurerm_subscription.current.id)
-      product                = local.product_identifier
-    }
-    many_relations = length(local.services) > 0 ? {
-      deployed_service = [for s in local.services : s.service_identifier]
-    } : null
-  }
-
-  run_id = var.port_run_id
+output "deployment_environment" {
+  value = module.environment.resource_group_id
 }
 
-output "resource_group_id" {
-  value = module.environment.resource_group_id
+output "deployment_identity" {
+  value = module.environment.user_managed_identity_id
+}
+
+output "azure_subscription" {
+  value = lower(data.azurerm_subscription.current.id)
+}
+
+output "product" {
+  value = local.product_identifier
 }
