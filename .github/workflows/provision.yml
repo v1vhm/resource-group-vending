@@ -244,7 +244,7 @@ jobs:
           status: FAILURE
           logMessage: 'Terraform plan failed'
 
-  provision:
+  apply:
     needs: [prepare, plan]
     runs-on: ubuntu-latest
     permissions:
@@ -261,6 +261,11 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+    outputs:
+      deployment_environment: ${{ steps.capture_outputs.outputs.deployment_environment }}
+      deployment_identity: ${{ steps.capture_outputs.outputs.deployment_identity }}
+      azure_subscription: ${{ steps.capture_outputs.outputs.azure_subscription }}
+      state_file_container: ${{ steps.capture_outputs.outputs.state_file_container }}
     steps:
       - uses: actions/checkout@v4
 
@@ -328,7 +333,7 @@ jobs:
       - name: Terraform Apply
         id: apply
         run: |
-          terraform -chdir=terraform apply -auto-approve -no-color ${{ needs.plan.outputs.plan_path }} > apply.log
+          terraform -chdir=terraform apply -auto-approve -no-color tfplan > apply.log
           echo "apply<<EOF" >> $GITHUB_OUTPUT
           cat apply.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -344,7 +349,18 @@ jobs:
           logMessage: ${{ steps.apply.outputs.apply }}
 
       - name: Capture outputs
-        run: terraform -chdir=terraform output -json > tfoutput.json
+        id: capture_outputs
+        run: |
+          terraform -chdir=terraform output -json > tfoutput.json
+          echo "deployment_environment=$(jq -r '.deployment_environment.value' tfoutput.json)" >> $GITHUB_OUTPUT
+          echo "deployment_identity=$(jq -r '.deployment_identity.value' tfoutput.json)" >> $GITHUB_OUTPUT
+          echo "azure_subscription=$(jq -r '.azure_subscription.value' tfoutput.json)" >> $GITHUB_OUTPUT
+          echo "state_file_container=$STATE_FILE_CONTAINER" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfoutput
+          path: tfoutput.json
 
       - name: Log start append outputs
         uses: port-labs/port-github-action@v1
@@ -386,7 +402,7 @@ jobs:
           git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
           git push origin HEAD:main
 
-      - name: Mark run success
+      - name: Mark apply success
         if: success()
         uses: port-labs/port-github-action@v1
         with:
@@ -395,9 +411,9 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Product provisioning complete'
+          logMessage: 'Terraform apply complete'
 
-      - name: Mark run failure
+      - name: Mark apply failure
         if: failure()
         uses: port-labs/port-github-action@v1
         with:
@@ -407,4 +423,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Product provisioning failed'
+          logMessage: 'Terraform apply failed'
