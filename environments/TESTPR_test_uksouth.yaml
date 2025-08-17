@@ -1,0 +1,12 @@
+environment_name: Test Product
+environment_short_name: TESTPR
+location: uksouth
+environment: test
+port_run_id: r_JNmcKgRrF8hI00UJ
+product_name: Test Product
+product_identifier: TESTPR
+services: []
+deployment_environment: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth
+deployment_identity: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth/providers/microsoft.managedidentity/userassignedidentities/uai-testpr-test-uksouth
+azure_subscription: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f
+product: TESTPR
