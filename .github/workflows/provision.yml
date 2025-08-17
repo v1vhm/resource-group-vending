@@ -141,8 +141,111 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Prepared ${{ steps.create_env_file.outputs.path }} and container ${{ steps.compute_container.outputs.name }}'
 
-  provision:
+  plan:
     needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
+      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
+      CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+    outputs:
+      plan_path: ${{ steps.plan.outputs.path }}
+      plan_summary: ${{ steps.summarize.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: environment-file
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURECLIENTID }}
+          tenant-id: ${{ secrets.AZURETENANTID }}
+          subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Log start terraform plan
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting Terraform Plan for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform init \
+            -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
+            -backend-config="storage_account_name=vendingtfstate" \
+            -backend-config="container_name=${CONTAINER_NAME}" \
+            -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
+            -reconfigure
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform -chdir=terraform plan -out=tfplan -no-color
+          echo "path=tfplan" >> $GITHUB_OUTPUT
+
+      - name: Summarize Plan
+        id: summarize
+        run: |
+          terraform -chdir=terraform show -json tfplan | jq -r '.resource_changes[] | "- " + .address + ": " + (.change.actions|join(", "))' > plan_summary.txt
+          cat plan_summary.txt
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          cat plan_summary.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
+
+      - name: Log plan completion
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: ${{ steps.summarize.outputs.summary }}
+
+      - name: Log plan failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Terraform plan failed'
+
+  provision:
+    needs: [prepare, plan]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -164,6 +267,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: environment-file
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -207,34 +315,6 @@ jobs:
             -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
             -reconfigure
 
-      - name: Log start terraform plan
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting Terraform Plan'
-
-      - name: Terraform Plan
-        id: plan
-        run: |
-          terraform -chdir=terraform plan -no-color > plan.log
-          echo "plan<<EOF" >> $GITHUB_OUTPUT
-          cat plan.log >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Log plan output
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: ${{ steps.plan.outputs.plan }}
-
       - name: Log start terraform apply
         uses: port-labs/port-github-action@v1
         with:
@@ -248,7 +328,7 @@ jobs:
       - name: Terraform Apply
         id: apply
         run: |
-          terraform -chdir=terraform apply -auto-approve -no-color > apply.log
+          terraform -chdir=terraform apply -auto-approve -no-color ${{ needs.plan.outputs.plan_path }} > apply.log
           echo "apply<<EOF" >> $GITHUB_OUTPUT
           cat apply.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
