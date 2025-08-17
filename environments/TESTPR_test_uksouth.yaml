@@ -1,5 +1,6 @@
 environment_name: Test Product
 environment_short_name: TESTPR
+environment_identifier: testpr_test_uksouth
 location: uksouth
 environment: test
 port_run_id: r_JNmcKgRrF8hI00UJ
