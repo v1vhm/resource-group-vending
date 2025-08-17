@@ -394,7 +394,7 @@ jobs:
           echo "deployment_environment=$(jq -r '.deployment_environment.value' tfoutput.json)" >> $GITHUB_OUTPUT
           echo "deployment_identity=$(jq -r '.deployment_identity.value' tfoutput.json)" >> $GITHUB_OUTPUT
           echo "azure_subscription=$(jq -r '.azure_subscription.value' tfoutput.json)" >> $GITHUB_OUTPUT
-          echo "state_file_container=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
+          echo "state_file_container=$(jq -r '.state_file_container.value' tfoutput.json)" >> $GITHUB_OUTPUT
 
       - uses: actions/upload-artifact@v4
         with:
