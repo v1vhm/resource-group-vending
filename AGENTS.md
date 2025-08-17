@@ -38,6 +38,12 @@ When editing `.github/workflows/provision.yml` or adding new workflows:
 5. **Logging to Port:** Many steps call `port-labs/port-github-action` to log messages or mark run status.  If you add new steps that perform long‑running tasks, consider adding a corresponding log entry so that Port users can follow progress.
 6. **File paths for Terraform:** Terraform commands run with `-chdir=terraform`. When passing file paths (e.g., the environment YAML) via variables, supply an absolute path so Terraform can locate the file regardless of the current working directory.
 
+### Error handling
+
+Terraform execution in the provisioning workflow is centralized in `scripts/terraform-run.sh`. This helper uses `set -euo pipefail` and a `trap` handler to capture the exit code and emit the collected log back to the step through `$GITHUB_OUTPUT`. Invoke it for Terraform `plan` and `apply` to ensure consistent logging.
+
+Workflow steps that depend on previous steps should explicitly set `if: success()` (e.g., summarizing or uploading the plan). Logging steps that surface errors should use `if: failure()` and reference the failing step's output such as `${{ steps.plan.outputs.log }}` so that problems are visible in Port.
+
 ## Updating Terraform
 
 * **Variables and modules:** When adding new fields to the environment YAML schema (e.g., a new tag or property), declare a corresponding variable in `terraform/modules/resource_group/variables.tf` and propagate it through `terraform/main.tf` into the module and resources.  Be consistent: if a variable is optional, give it a default value or use `try()` in the module to avoid errors.
