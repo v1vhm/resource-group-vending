@@ -35,7 +35,19 @@ jobs:
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
+      PORT_RUN_ID: ${{ inputs.port_run_id }}
+      TF_VAR_port_run_id: ${{ inputs.port_run_id }}
     steps:
+      - name: Log start associate
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Associating service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }} using repo ${{ inputs.github_repo }}'
+
       - uses: actions/checkout@v4
 
       - name: Load environment context
@@ -49,8 +61,6 @@ jobs:
           ENVIRONMENT=$(grep '^environment:' "$ENV_FILE" | awk '{print $2}')
           LOCATION=$(grep '^location:' "$ENV_FILE" | awk '{print $2}')
           ENV_SHORT_NAME=$(grep '^environment_short_name:' "$ENV_FILE" | awk '{print $2}')
-          echo "PORT_RUN_ID=${{ inputs.port_run_id }}" >> $GITHUB_ENV
-          echo "TF_VAR_port_run_id=${{ inputs.port_run_id }}" >> $GITHUB_ENV
           echo "PRODUCT_IDENTIFIER=$PRODUCT_IDENTIFIER" >> $GITHUB_ENV
           echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
           echo "LOCATION=$LOCATION" >> $GITHUB_ENV
@@ -60,16 +70,6 @@ jobs:
         run: |
           CONTAINER_NAME=$(echo "${ENV_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
           echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-
-      - name: Start run
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Service association started'
 
       - name: Update services list
         run: |
@@ -129,21 +129,26 @@ jobs:
             -reconfigure
 
       - name: Terraform Plan
-        run: terraform -chdir=terraform plan -no-color
+        id: plan
+        run: |
+          set +e
+          terraform -chdir=terraform plan -no-color 2>&1 | tee plan.log
+          status=$?
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          cat plan.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          exit $status
 
       - name: Terraform Apply (update Port relations)
-        run: terraform -chdir=terraform apply -auto-approve -no-color
-
-      - name: Mark run success
-        if: success()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Service association complete'
+        id: apply
+        run: |
+          set +e
+          terraform -chdir=terraform apply -auto-approve -no-color 2>&1 | tee apply.log
+          status=$?
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          cat apply.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          exit $status
 
       - name: Update request status
         if: success()
@@ -160,7 +165,18 @@ jobs:
               "status": "Configuring Service"
             }
 
-      - name: Mark run failure
+      - name: Log association complete
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
+
+      - name: Log association failure
         if: failure()
         uses: port-labs/port-github-action@v1
         with:
@@ -170,4 +186,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Service association failed'
+          logMessage: "Associate stage failed: plan=${{ steps.plan.outputs.log }} apply=${{ steps.apply.outputs.log }}"

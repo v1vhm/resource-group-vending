@@ -130,8 +130,8 @@ jobs:
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
-
       - name: Log preparation complete
+        if: success()
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -140,6 +140,18 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Prepared ${{ steps.create_env_file.outputs.path }} and container ${{ steps.compute_container.outputs.name }}'
+
+      - name: Log preparation failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Preparation stage failed for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
   plan:
     needs: prepare
@@ -162,6 +174,16 @@ jobs:
       plan_path: ${{ steps.plan.outputs.path }}
       plan_summary: ${{ steps.summarize.outputs.summary }}
     steps:
+      - name: Log start plan
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting plan stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
+
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
@@ -181,16 +203,6 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Log start terraform plan
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting Terraform Plan for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
-
       - name: Terraform Init
         run: |
           terraform -chdir=terraform init \
@@ -203,8 +215,14 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          terraform -chdir=terraform plan -out=tfplan -no-color
+          set +e
+          terraform -chdir=terraform plan -out=tfplan -no-color 2>&1 | tee plan.log
+          status=$?
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          cat plan.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "path=tfplan" >> $GITHUB_OUTPUT
+          exit $status
 
       - name: Summarize Plan
         id: summarize
@@ -242,7 +260,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Terraform plan failed'
+          logMessage: "Plan stage failed: ${{ steps.plan.outputs.log }}"
 
   apply:
     needs: [prepare, plan]
@@ -267,6 +285,16 @@ jobs:
       azure_subscription: ${{ steps.capture_outputs.outputs.azure_subscription }}
       state_file_container: ${{ steps.capture_outputs.outputs.state_file_container }}
     steps:
+      - name: Log start apply
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting apply stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
+
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
@@ -333,10 +361,13 @@ jobs:
       - name: Terraform Apply
         id: apply
         run: |
-          terraform -chdir=terraform apply -auto-approve -no-color tfplan > apply.log
+          set +e
+          terraform -chdir=terraform apply -auto-approve -no-color tfplan 2>&1 | tee apply.log
+          status=$?
           echo "apply<<EOF" >> $GITHUB_OUTPUT
           cat apply.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          exit $status
 
       - name: Log apply output
         uses: port-labs/port-github-action@v1
@@ -371,7 +402,10 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Terraform apply complete'
+          logMessage: >-
+            Terraform apply complete for env=${{ steps.capture_outputs.outputs.deployment_environment }},
+            identity=${{ steps.capture_outputs.outputs.deployment_identity }},
+            subscription=${{ steps.capture_outputs.outputs.azure_subscription }}
 
       - name: Mark apply failure
         if: failure()
@@ -383,7 +417,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Terraform apply failed'
+          logMessage: "Apply stage failed: ${{ steps.apply.outputs.apply }}"
 
   finalize:
     needs: apply
@@ -396,12 +430,6 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: environment-file
-
       - name: Log start finalize
         uses: port-labs/port-github-action@v1
         with:
@@ -414,6 +442,12 @@ jobs:
             Finalizing ${{ env.ENV_FILE }} with env=${{ needs.apply.outputs.deployment_environment }},
             identity=${{ needs.apply.outputs.deployment_identity }},
             subscription=${{ needs.apply.outputs.azure_subscription }}
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: environment-file
 
       - name: Append outputs to environment file
         run: |
@@ -435,6 +469,7 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Log finalize completion
+        if: success()
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -457,4 +492,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: 'Finalize step failed'
+          logMessage: "Finalize stage failed for ${{ env.ENV_FILE }}"
