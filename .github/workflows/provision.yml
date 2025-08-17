@@ -362,46 +362,6 @@ jobs:
           name: tfoutput
           path: tfoutput.json
 
-      - name: Log start append outputs
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Appending Terraform outputs to product environment file'
-
-      - name: Append outputs to environment file
-        run: |
-          DEPLOYMENT_ENV=$(jq -r '.deployment_environment.value' tfoutput.json)
-          DEPLOYMENT_IDENTITY=$(jq -r '.deployment_identity.value' tfoutput.json)
-          AZURE_SUBSCRIPTION=$(jq -r '.azure_subscription.value' tfoutput.json)
-          {
-            echo "deployment_environment: $DEPLOYMENT_ENV"
-            echo "deployment_identity: $DEPLOYMENT_IDENTITY"
-            echo "azure_subscription: $AZURE_SUBSCRIPTION"
-            echo "state_file_container: $STATE_FILE_CONTAINER"
-          } >> ${{ needs.prepare.outputs.environment_file }}
-
-      - name: Log start commit updated environment file
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Committing updated product environment file'
-
-      - name: Commit updated environment file
-        run: |
-          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
-          git config user.name "getport-io[bot]"
-          git add ${{ needs.prepare.outputs.environment_file }}
-          git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
-          git push origin HEAD:main
-
       - name: Mark apply success
         if: success()
         uses: port-labs/port-github-action@v1
@@ -424,3 +384,77 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
           logMessage: 'Terraform apply failed'
+
+  finalize:
+    needs: apply
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: environment-file
+
+      - name: Log start finalize
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: >-
+            Finalizing ${{ env.ENV_FILE }} with env=${{ needs.apply.outputs.deployment_environment }},
+            identity=${{ needs.apply.outputs.deployment_identity }},
+            subscription=${{ needs.apply.outputs.azure_subscription }}
+
+      - name: Append outputs to environment file
+        run: |
+          {
+            echo "deployment_environment: ${{ needs.apply.outputs.deployment_environment }}"
+            echo "deployment_identity: ${{ needs.apply.outputs.deployment_identity }}"
+            echo "azure_subscription: ${{ needs.apply.outputs.azure_subscription }}"
+            echo "state_file_container: ${{ needs.apply.outputs.state_file_container }}"
+          } >> $ENV_FILE
+
+      - name: Commit updated environment file
+        id: commit
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add $ENV_FILE
+          git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Log finalize completion
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: >-
+            Finalized ${{ env.ENV_FILE }} with commit ${{ steps.commit.outputs.sha }} and ids env=${{ needs.apply.outputs.deployment_environment }},
+            identity=${{ needs.apply.outputs.deployment_identity }},
+            subscription=${{ needs.apply.outputs.azure_subscription }}
+
+      - name: Log finalize failure
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Finalize step failed'
