@@ -160,10 +160,8 @@ jobs:
           operation: UPSERT
           blueprint: request
           identifier: ${{ inputs.request_identifier }}
-          properties: |
-            {
-              "status": "Configuring Service"
-            }
+          properties: >-
+            {"status": "Configuring Service"}
 
       - name: Log association complete
         if: success()
