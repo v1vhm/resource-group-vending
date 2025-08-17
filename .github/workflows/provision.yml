@@ -394,10 +394,12 @@ jobs:
         id: capture_outputs
         run: |
           terraform -chdir=terraform output -json > tfoutput.json
-          echo "deployment_environment=$(jq -r '.deployment_environment.value' tfoutput.json)" >> $GITHUB_OUTPUT
-          echo "deployment_identity=$(jq -r '.deployment_identity.value' tfoutput.json)" >> $GITHUB_OUTPUT
-          echo "azure_subscription=$(jq -r '.azure_subscription.value' tfoutput.json)" >> $GITHUB_OUTPUT
-          echo "state_file_container=$(jq -r '.state_file_container.value' tfoutput.json)" >> $GITHUB_OUTPUT
+          for key in deployment_environment deployment_identity azure_subscription state_file_container; do
+            value=$(jq -r ".${key}.value" tfoutput.json)
+            echo "${key}<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$value" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -441,6 +443,17 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
+      - name: Verify apply outputs
+        run: |
+          test -n "${{ needs.apply.outputs.deployment_environment }}" || { echo 'deployment_environment output is empty' >&2; exit 1; }
+          test -n "${{ needs.apply.outputs.deployment_identity }}" || { echo 'deployment_identity output is empty' >&2; exit 1; }
+          test -n "${{ needs.apply.outputs.azure_subscription }}" || { echo 'azure_subscription output is empty' >&2; exit 1; }
+          {
+            echo "DEPLOYMENT_ENVIRONMENT=${{ needs.apply.outputs.deployment_environment }}"
+            echo "DEPLOYMENT_IDENTITY=${{ needs.apply.outputs.deployment_identity }}"
+            echo "AZURE_SUBSCRIPTION=${{ needs.apply.outputs.azure_subscription }}"
+          } >> "$GITHUB_ENV"
+
       - name: Log start finalize
         uses: port-labs/port-github-action@v1
         with:
@@ -450,9 +463,9 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: >-
-            Finalizing ${{ env.ENV_FILE }} with env=${{ needs.apply.outputs.deployment_environment }},
-            identity=${{ needs.apply.outputs.deployment_identity }},
-            subscription=${{ needs.apply.outputs.azure_subscription }}
+            Finalizing ${{ env.ENV_FILE }} with env=${{ env.DEPLOYMENT_ENVIRONMENT }},
+            identity=${{ env.DEPLOYMENT_IDENTITY }},
+            subscription=${{ env.AZURE_SUBSCRIPTION }}
 
       - uses: actions/checkout@v4
 
@@ -469,9 +482,9 @@ jobs:
       - name: Append outputs to environment file
         run: |
           {
-            echo "deployment_environment: ${{ needs.apply.outputs.deployment_environment }}"
-            echo "deployment_identity: ${{ needs.apply.outputs.deployment_identity }}"
-            echo "azure_subscription: ${{ needs.apply.outputs.azure_subscription }}"
+            echo "deployment_environment: $DEPLOYMENT_ENVIRONMENT"
+            echo "deployment_identity: $DEPLOYMENT_IDENTITY"
+            echo "azure_subscription: $AZURE_SUBSCRIPTION"
             echo "state_file_container: ${{ needs.apply.outputs.state_file_container }}"
           } >> $ENV_FILE
 
@@ -507,9 +520,9 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: >-
-            Finalized ${{ env.ENV_FILE }} with commit ${{ steps.commit.outputs.sha }} and ids env=${{ needs.apply.outputs.deployment_environment }},
-            identity=${{ needs.apply.outputs.deployment_identity }},
-            subscription=${{ needs.apply.outputs.azure_subscription }}
+            Finalized ${{ env.ENV_FILE }} with commit ${{ steps.commit.outputs.sha }} and ids env=${{ env.DEPLOYMENT_ENVIRONMENT }},
+            identity=${{ env.DEPLOYMENT_IDENTITY }},
+            subscription=${{ env.AZURE_SUBSCRIPTION }}
 
       - name: Log finalize failure
         if: failure()
