@@ -10,19 +10,17 @@ terraform {
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-${var.environment_short_name}-${var.environment}-${var.location}"
+  name     = "rg-${var.product_identifier}-${var.environment}-${var.location}"
   location = var.location
   tags = {
-    environment_name       = var.environment_name
-    environment_short_name = var.environment_short_name
-    environment            = var.environment
-    product_identifier     = var.product_identifier
-    product_name           = var.product_name
+    environment        = var.environment
+    product_identifier = var.product_identifier
+    product_name       = var.product_name
   }
 }
 
 resource "azurerm_storage_account" "sa" {
-  name                     = "st${lower(var.environment_short_name)}${var.environment}"
+  name                     = "st${lower(var.product_identifier)}${var.environment}"
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = var.location
   account_tier             = "Standard"
@@ -31,7 +29,7 @@ resource "azurerm_storage_account" "sa" {
 }
 
 resource "azurerm_user_assigned_identity" "uai" {
-  name                = "uai-${var.environment_short_name}-${var.environment}-${var.location}"
+  name                = "uai-${var.product_identifier}-${var.environment}-${var.location}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
 }
@@ -52,7 +50,7 @@ resource "azurerm_role_assignment" "storage_blob_data_contributor" {
 
 resource "azurerm_federated_identity_credential" "github" {
   for_each            = { for s in var.services : s.service_identifier => s }
-  name                = "fic-${var.environment_short_name}-${var.environment}-${each.key}"
+  name                = "fic-${var.product_identifier}-${var.environment}-${each.key}"
   resource_group_name = azurerm_resource_group.rg.name
   parent_id           = azurerm_user_assigned_identity.uai.id
   issuer              = "https://token.actions.githubusercontent.com"

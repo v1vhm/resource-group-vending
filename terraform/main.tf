@@ -30,14 +30,12 @@ locals {
 module "environment" {
   source = "./modules/resource_group"
 
-  environment_name       = local.environment.environment_name
-  environment_short_name = local.environment.environment_short_name
-  location               = local.environment.location
-  environment            = local.environment.environment
-  product_name           = local.product_name
-  product_identifier     = local.product_identifier
-  services               = local.services
-  port_run_id            = var.port_run_id
+  location           = local.environment.location
+  environment        = local.environment.environment
+  product_name       = local.product_name
+  product_identifier = local.product_identifier
+  services           = local.services
+  port_run_id        = var.port_run_id
 }
 
 output "deployment_environment" {
@@ -52,6 +50,3 @@ output "azure_subscription" {
   value = lower(data.azurerm_subscription.current.id)
 }
 
-output "product" {
-  value = local.product_identifier
-}

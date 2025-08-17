@@ -1,5 +1,3 @@
-variable "environment_name" { type = string }
-variable "environment_short_name" { type = string }
 variable "location" { type = string }
 variable "environment" { type = string }
 variable "product_identifier" { type = string }

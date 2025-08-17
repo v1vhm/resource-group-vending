@@ -1,7 +1,5 @@
-environment_name: Test Product
-environment_short_name: TESTPR
-environment_identifier: testpr_test_uksouth
-environment_title: TESTPR-test-uksouth
+environment_identifier: test_product_test_uksouth
+environment_title: Test Product test
 location: uksouth
 environment: test
 port_run_id: r_JNmcKgRrF8hI00UJ
@@ -11,4 +9,4 @@ services: []
 deployment_environment: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth
 deployment_identity: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth/providers/microsoft.managedidentity/userassignedidentities/uai-testpr-test-uksouth
 azure_subscription: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f
-product: TESTPR
+state_file_container: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourceGroups/v1vhm-rg-vending-prod-uks-001/providers/Microsoft.Storage/storageAccounts/vendingtfstate/blobServices/default/containers/testprtestuksouth

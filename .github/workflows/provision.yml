@@ -103,13 +103,20 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting product environment file creation'
 
+      - name: Derive environment identifiers
+        run: |
+          ENVIRONMENT_IDENTIFIER=$(echo "${{ inputs.product_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+          ENVIRONMENT_TITLE="${{ inputs.product_name }} ${{ inputs.environment }}"
+          echo "ENVIRONMENT_IDENTIFIER=$ENVIRONMENT_IDENTIFIER" >> $GITHUB_ENV
+          echo "ENVIRONMENT_TITLE=$ENVIRONMENT_TITLE" >> $GITHUB_ENV
+
       - name: Create environment file
         id: create_env_file
         run: |
           mkdir -p environments
           cat <<EOF > environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
-          environment_name: ${{ inputs.product_name }}
-          environment_short_name: ${{ inputs.product_short_name }}
+          environment_identifier: $ENVIRONMENT_IDENTIFIER
+          environment_title: $ENVIRONMENT_TITLE
           location: ${{ inputs.location }}
           environment: ${{ inputs.environment }}
           port_run_id: $PORT_RUN_ID
@@ -143,6 +150,16 @@ jobs:
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
+
+      - name: Capture state container id
+        run: |
+          STATE_FILE_CONTAINER=$(az storage container show \
+            --name $CONTAINER_NAME \
+            --account-name vendingtfstate \
+            --resource-group v1vhm-rg-vending-prod-uks-001 \
+            --auth-mode login \
+            --query id -o tsv)
+          echo "STATE_FILE_CONTAINER=$STATE_FILE_CONTAINER" >> $GITHUB_ENV
 
       - name: Log start terraform init
         uses: port-labs/port-github-action@v1
@@ -237,12 +254,11 @@ jobs:
           DEPLOYMENT_ENV=$(jq -r '.deployment_environment.value' tfoutput.json)
           DEPLOYMENT_IDENTITY=$(jq -r '.deployment_identity.value' tfoutput.json)
           AZURE_SUBSCRIPTION=$(jq -r '.azure_subscription.value' tfoutput.json)
-          PRODUCT=$(jq -r '.product.value' tfoutput.json)
           {
             echo "deployment_environment: $DEPLOYMENT_ENV"
             echo "deployment_identity: $DEPLOYMENT_IDENTITY"
             echo "azure_subscription: $AZURE_SUBSCRIPTION"
-            echo "product: $PRODUCT"
+            echo "state_file_container: $STATE_FILE_CONTAINER"
           } >> environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
 
       - name: Log start commit updated environment file
