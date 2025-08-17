@@ -26,6 +26,7 @@ The high‑level layout is:
 * **Terraform state:** A recent change introduced a separate state file per environment (see commit message *"Create a new state file for each environment"*).  If adding new environments or modifying the backend configuration, keep this behaviour by using a unique `key` in `backend.tf` (e.g., `${product_identifier}_${environment}_${location}.tfstate`).  Avoid using a single shared `terraform.tfstate` for all environments.
 * **Port entities:** The Terraform root registers a Port *environment* entity using the `product_identifier`, environment tier and location as the identifier and title.  Do not revert to using the short name here; a recent commit corrected this (see commit *"port objects now use correct identifier"*).  When adding properties or relations to Port entities, ensure that identifiers remain stable (changing them will orphan existing records).  Services relate to this entity through the optional `services` list.
 * **Use IDs for relations:** Another recent change switched from using resource names to Azure IDs when passing values back to Port (see commit *"Changing resource name properties to id properties"*).  When adding new outputs or relations, prefer IDs over names; IDs are globally unique and avoid collisions.
+* **Lowercase resource IDs:** Convert any Azure resource ID passed to Port to lowercase to ensure consistency.
 
 ## Making changes to the workflow
 

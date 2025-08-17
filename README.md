@@ -22,6 +22,10 @@ The `product_name` and `product_identifier` fields record the owning product. Se
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
 
+## Conventions
+
+All Azure resource IDs referenced in environment files or Port relations must be lowercase.
+
 ## Provisioning an environment
 Port invokes the **Provision Environment** workflow with environment details. On success, the workflow provisions the resources and commits the corresponding YAML file to the repository.
 
