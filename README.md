@@ -5,24 +5,22 @@ Environments are provisioned through a GitHub Actions workflow triggered by Port
 
 ## Environment YAML schema
 ```yaml
-environment_name: Demo Environment
-environment_short_name: demoenv    # 6-10 chars, no spaces or special characters
+environment_identifier: demo_product_dev_eastus
+environment_title: Demo Product dev
 location: eastus
-environment: dev               # dev | test | prod
+environment: dev               # dev | test | prod | acct
 port_run_id: abcde12345       # Port action run id
 product_name: Demo Product
 product_identifier: prod-12345     # product identifier from Port
 services: []                       # optional; services can be associated later
-deployment_environment: /subscriptions/.../resourceGroups/rg-demoenv-dev-eastus
-deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai-demoenv-dev-eastus
+deployment_environment: /subscriptions/.../resourceGroups/rg-prod-12345-dev-eastus
+deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai-prod-12345-dev-eastus
 azure_subscription: /subscriptions/...      # subscription id
-product: prod-12345
+state_file_container: /subscriptions/.../storageAccounts/vendingtfstate/blobServices/default/containers/prod-12345dev
 ```
-The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. The fields `deployment_environment`, `deployment_identity`, `azure_subscription` and `product` are appended after provisioning and are used to create the Port environment entity outside of Terraform.
+The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. The fields `deployment_environment`, `deployment_identity`, `azure_subscription` and `state_file_container` are appended after provisioning and are used to create the Port environment entity outside of Terraform.
 
-Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account.
-The resource group is tagged with the environment name, short name, environment,
-GitHub organization and repository so that ownership is clear.
+Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
 
 ## Provisioning an environment
 Port invokes the **Provision Environment** workflow with environment details. On success, the workflow provisions the resources and commits the corresponding YAML file to the repository.
@@ -31,7 +29,7 @@ Port invokes the **Provision Environment** workflow with environment details. On
 
 Run the **Associate Service** workflow to link a service to an environment. It requires the following inputs:
 
-- `environment_identifier` – `<productidentifier>_<environment>_<location>`
+- `environment_identifier` – `<product_name>_<environment>_<location>` in lower case with spaces replaced by underscores
 - `service_identifier` – unique service id
 - `github_repo` – repository in `org/repo` format
 - `port_run_id` – Port action run id for this association
