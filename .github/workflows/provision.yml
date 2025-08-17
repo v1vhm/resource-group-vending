@@ -190,6 +190,12 @@ jobs:
         with:
           name: environment-file
 
+      - name: Move environment file
+        run: mv $(basename ${{ needs.prepare.outputs.environment_file }}) ${{ needs.prepare.outputs.environment_file }}
+
+      - name: Verify environment file
+        run: test -f "$TF_VAR_environment_file"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -300,6 +306,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: environment-file
+
+      - name: Move environment file
+        run: mv $(basename ${{ needs.prepare.outputs.environment_file }}) ${{ needs.prepare.outputs.environment_file }}
+
+      - name: Verify environment file
+        run: test -f "$TF_VAR_environment_file"
 
       - uses: actions/download-artifact@v4
         with:
@@ -448,6 +460,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: environment-file
+
+      - name: Move environment file
+        run: mv $(basename "$ENV_FILE") "$ENV_FILE"
+
+      - name: Verify environment file
+        run: test -f "$ENV_FILE"
 
       - name: Append outputs to environment file
         run: |
