@@ -43,6 +43,7 @@ jobs:
     outputs:
       environment_file: ${{ steps.create_env_file.outputs.path }}
       container_name: ${{ steps.compute_container.outputs.name }}
+      state_file_container_id: ${{ steps.compute_state_container_id.outputs.id }}
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
@@ -130,6 +131,22 @@ jobs:
             --account-name vendingtfstate \
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
+      - name: Compute state container id
+        id: compute_state_container_id
+        run: |
+          STATE_FILE_CONTAINER_ID=$(echo "vendingtfstate-${CONTAINER_NAME}" | tr '[:upper:]' '[:lower:]')
+          echo "STATE_FILE_CONTAINER_ID=$STATE_FILE_CONTAINER_ID" >> $GITHUB_ENV
+          echo "id=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
+      - name: Register state container
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT_ENTITY
+          blueprint: azureStorageContainer
+          identifier: ${{ env.STATE_FILE_CONTAINER_ID }}
+          title: ${{ env.CONTAINER_NAME }}
       - name: Log preparation complete
         if: success()
         uses: port-labs/port-github-action@v1
@@ -279,6 +296,7 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+      STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
     outputs:
       deployment_environment: ${{ steps.capture_outputs.outputs.deployment_environment }}
       deployment_identity: ${{ steps.capture_outputs.outputs.deployment_identity }}
@@ -324,16 +342,6 @@ jobs:
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Capture state container id
-        run: |
-          STATE_FILE_CONTAINER=$(az storage container show \
-            --name $CONTAINER_NAME \
-            --account-name vendingtfstate \
-            --resource-group v1vhm-rg-vending-prod-uks-001 \
-            --auth-mode login \
-            --query id -o tsv)
-          echo "STATE_FILE_CONTAINER=$STATE_FILE_CONTAINER" >> $GITHUB_ENV
 
       - name: Log start terraform init
         uses: port-labs/port-github-action@v1
@@ -386,7 +394,7 @@ jobs:
           echo "deployment_environment=$(jq -r '.deployment_environment.value' tfoutput.json)" >> $GITHUB_OUTPUT
           echo "deployment_identity=$(jq -r '.deployment_identity.value' tfoutput.json)" >> $GITHUB_OUTPUT
           echo "azure_subscription=$(jq -r '.azure_subscription.value' tfoutput.json)" >> $GITHUB_OUTPUT
-          echo "state_file_container=$STATE_FILE_CONTAINER" >> $GITHUB_OUTPUT
+          echo "state_file_container=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
 
       - uses: actions/upload-artifact@v4
         with:
