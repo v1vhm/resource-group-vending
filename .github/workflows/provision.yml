@@ -143,7 +143,7 @@ jobs:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
-          operation: UPSERT_ENTITY
+          operation: UPSERT
           blueprint: azureStorageContainer
           identifier: ${{ env.STATE_FILE_CONTAINER_ID }}
           title: ${{ env.CONTAINER_NAME }}
