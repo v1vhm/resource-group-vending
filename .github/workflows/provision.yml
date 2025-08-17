@@ -148,7 +148,7 @@ jobs:
           identifier: ${{ env.STATE_FILE_CONTAINER_ID }}
           title: ${{ env.CONTAINER_NAME }}
           relations: >-
-            {"storageAccount": "/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/v1vhm-rg-vending-prod-uks-001/providers/Microsoft.Storage/storageAccounts/vendingtfstate"}
+            {"storageAccount": "/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourcegroups/v1vhm-rg-vending-prod-uks-001/providers/microsoft.storage/storageaccounts/vendingtfstate"}
           properties: '{}'
       - name: Log preparation complete
         if: success()
