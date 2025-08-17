@@ -110,9 +110,7 @@ resource "port_entity" "state_container" {
   identifier = lower("${azurerm_storage_account.sa.name}-tfstate")
   title      = azurerm_storage_container.tfstate.name
   relations = {
-    single_relations = {
-      storageAccount = lower(port_entity.storage_account.identifier)
-    }
+    storageAccount = azurerm_storage_account.sa.id
   }
   run_id = var.port_run_id
 }
