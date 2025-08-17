@@ -137,7 +137,7 @@ jobs:
           STATE_FILE_CONTAINER_ID=$(echo "vendingtfstate-${CONTAINER_NAME}" | tr '[:upper:]' '[:lower:]')
           echo "STATE_FILE_CONTAINER_ID=$STATE_FILE_CONTAINER_ID" >> $GITHUB_ENV
           echo "id=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
-      - name: Register state container
+      - name: Upsert state container
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -148,7 +148,8 @@ jobs:
           identifier: ${{ env.STATE_FILE_CONTAINER_ID }}
           title: ${{ env.CONTAINER_NAME }}
           relations: >-
-            storageAccount: "/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/v1vhm-rg-vending-prod-uks-001/providers/Microsoft.Storage/storageAccounts/vendingtfstate"
+            {"storageAccount": "/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/v1vhm-rg-vending-prod-uks-001/providers/Microsoft.Storage/storageAccounts/vendingtfstate"}
+          properties: '{}'
       - name: Log preparation complete
         if: success()
         uses: port-labs/port-github-action@v1
