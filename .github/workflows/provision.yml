@@ -26,11 +26,11 @@ on:
         type: string
 
 jobs:
-  provision:
+  prepare:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: write
+      contents: read
     env:
       ARM_USE_OIDC: true
       ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
@@ -40,7 +40,9 @@ jobs:
       TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+    outputs:
+      environment_file: ${{ steps.create_env_file.outputs.path }}
+      container_name: ${{ steps.compute_container.outputs.name }}
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
@@ -50,9 +52,16 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Product provisioning started'
+          logMessage: 'Preparing ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
       - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURECLIENTID }}
+          tenant-id: ${{ secrets.AZURETENANTID }}
+          subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
 
       - name: Check for existing environment file
         id: check_env
@@ -79,6 +88,82 @@ jobs:
         if: steps.check_env.outputs.exists == 'true'
         run: exit 1
 
+      - name: Derive environment identifiers
+        run: |
+          ENVIRONMENT_IDENTIFIER=$(echo "${{ inputs.product_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+          ENVIRONMENT_TITLE="${{ inputs.product_name }} ${{ inputs.environment }}"
+          echo "ENVIRONMENT_IDENTIFIER=$ENVIRONMENT_IDENTIFIER" >> $GITHUB_ENV
+          echo "ENVIRONMENT_TITLE=$ENVIRONMENT_TITLE" >> $GITHUB_ENV
+
+      - name: Create environment file
+        id: create_env_file
+        run: |
+          mkdir -p environments
+          FILE_PATH=environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          cat <<EOF > $FILE_PATH
+          environment_identifier: $ENVIRONMENT_IDENTIFIER
+          environment_title: $ENVIRONMENT_TITLE
+          location: ${{ inputs.location }}
+          environment: ${{ inputs.environment }}
+          product_name: ${{ inputs.product_name }}
+          product_identifier: ${{ inputs.product_identifier }}
+          port_run_id: $PORT_RUN_ID
+          EOF
+          echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: environment-file
+          path: ${{ steps.create_env_file.outputs.path }}
+
+      - name: Compute container name
+        id: compute_container
+        run: |
+          CONTAINER_NAME=$(echo "${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
+          echo "name=$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+
+      - name: Create state container
+        run: |
+          az storage container create \
+            --name $CONTAINER_NAME \
+            --account-name vendingtfstate \
+            --resource-group v1vhm-rg-vending-prod-uks-001 \
+            --auth-mode login
+
+      - name: Log preparation complete
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Prepared ${{ steps.create_env_file.outputs.path }} and container ${{ steps.compute_container.outputs.name }}'
+
+  provision:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
+      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
+      TF_VAR_port_run_id: ${{ fromJson(inputs.port_context).runId }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
+      CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: environment-file
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -92,64 +177,6 @@ jobs:
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Log start environment file creation
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting product environment file creation'
-
-      - name: Derive environment identifiers
-        run: |
-          ENVIRONMENT_IDENTIFIER=$(echo "${{ inputs.product_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
-          ENVIRONMENT_TITLE="${{ inputs.product_name }} ${{ inputs.environment }}"
-          echo "ENVIRONMENT_IDENTIFIER=$ENVIRONMENT_IDENTIFIER" >> $GITHUB_ENV
-          echo "ENVIRONMENT_TITLE=$ENVIRONMENT_TITLE" >> $GITHUB_ENV
-
-      - name: Create environment file
-        id: create_env_file
-        run: |
-          mkdir -p environments
-          cat <<EOF > environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
-          environment_identifier: $ENVIRONMENT_IDENTIFIER
-          environment_title: $ENVIRONMENT_TITLE
-          location: ${{ inputs.location }}
-          environment: ${{ inputs.environment }}
-          port_run_id: $PORT_RUN_ID
-          product_name: ${{ inputs.product_name }}
-          product_identifier: ${{ inputs.product_identifier }}
-          services: []
-          EOF
-          echo "file_content<<EOF" >> $GITHUB_OUTPUT
-          cat environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Log environment file content
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: ${{ steps.create_env_file.outputs.file_content }}
-
-      - name: Set storage container name
-        run: |
-          CONTAINER_NAME=$(echo "${{ inputs.product_short_name }}${{ inputs.environment }}${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-
-      - name: Create state container
-        run: |
-          az storage container create \
-            --name $CONTAINER_NAME \
-            --account-name vendingtfstate \
-            --resource-group v1vhm-rg-vending-prod-uks-001 \
-            --auth-mode login
 
       - name: Capture state container id
         run: |
@@ -259,7 +286,7 @@ jobs:
             echo "deployment_identity: $DEPLOYMENT_IDENTITY"
             echo "azure_subscription: $AZURE_SUBSCRIPTION"
             echo "state_file_container: $STATE_FILE_CONTAINER"
-          } >> environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          } >> ${{ needs.prepare.outputs.environment_file }}
 
       - name: Log start commit updated environment file
         uses: port-labs/port-github-action@v1
@@ -275,7 +302,7 @@ jobs:
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          git add ${{ needs.prepare.outputs.environment_file }}
           git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
           git push origin HEAD:main
 
