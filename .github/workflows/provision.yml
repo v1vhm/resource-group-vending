@@ -220,17 +220,10 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: |
-          set +e
-          terraform -chdir=terraform plan -out=tfplan -no-color 2>&1 | tee plan.log
-          status=$?
-          echo "log<<EOF" >> $GITHUB_OUTPUT
-          cat plan.log >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "path=tfplan" >> $GITHUB_OUTPUT
-          exit $status
+        run: ./scripts/terraform-run.sh plan tfplan plan.log
 
       - name: Summarize Plan
+        if: success()
         id: summarize
         run: |
           terraform -chdir=terraform show -json tfplan | jq -r '.resource_changes[] | "- " + .address + ": " + (.change.actions|join(", "))' > plan_summary.txt
@@ -240,6 +233,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload plan
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
@@ -372,16 +366,10 @@ jobs:
 
       - name: Terraform Apply
         id: apply
-        run: |
-          set +e
-          terraform -chdir=terraform apply -auto-approve -no-color tfplan 2>&1 | tee apply.log
-          status=$?
-          echo "apply<<EOF" >> $GITHUB_OUTPUT
-          cat apply.log >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          exit $status
+        run: ./scripts/terraform-run.sh apply tfplan apply.log
 
       - name: Log apply output
+        if: success()
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -389,7 +377,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: ${{ steps.apply.outputs.apply }}
+          logMessage: ${{ steps.apply.outputs.log }}
 
       - name: Capture outputs
         id: capture_outputs
@@ -429,7 +417,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Apply stage failed: ${{ steps.apply.outputs.apply }}"
+          logMessage: "Apply stage failed: ${{ steps.apply.outputs.log }}"
 
   finalize:
     needs: apply
@@ -479,12 +467,24 @@ jobs:
       - name: Commit updated environment file
         id: commit
         run: |
+          set -euo pipefail
+          finish() {
+            status=$?
+            echo "log<<EOF" >> "$GITHUB_OUTPUT"
+            cat commit.log >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit $status
+          }
+          trap finish ERR
+          exec > >(tee commit.log) 2>&1
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add $ENV_FILE
           git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
           git push origin HEAD:main
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          trap - ERR
+          finish
 
       - name: Log finalize completion
         if: success()
@@ -510,4 +510,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Finalize stage failed for ${{ env.ENV_FILE }}"
+          logMessage: "Finalize stage failed: ${{ steps.commit.outputs.log }}"
