@@ -50,3 +50,7 @@ output "azure_subscription" {
   value = lower(data.azurerm_subscription.current.id)
 }
 
+output "state_file_container" {
+  value = module.environment.state_file_container
+}
+

@@ -28,6 +28,11 @@ resource "azurerm_storage_account" "sa" {
   tags                     = azurerm_resource_group.rg.tags
 }
 
+resource "azurerm_storage_container" "tfstate" {
+  name                 = "tfstate"
+  storage_account_name = azurerm_storage_account.sa.name
+}
+
 resource "azurerm_user_assigned_identity" "uai" {
   name                = "uai-${var.product_identifier}-${var.environment}-${var.location}"
   location            = var.location
@@ -100,6 +105,18 @@ resource "port_entity" "storage_account" {
   run_id = var.port_run_id
 }
 
+resource "port_entity" "state_container" {
+  blueprint  = "azureStorageContainer"
+  identifier = lower("${azurerm_storage_account.sa.name}-tfstate")
+  title      = azurerm_storage_container.tfstate.name
+  relations = {
+    single_relations = {
+      storageAccount = lower(port_entity.storage_account.identifier)
+    }
+  }
+  run_id = var.port_run_id
+}
+
 resource "port_entity" "user_managed_identity" {
   blueprint  = "azureUserManagedIdentity"
   identifier = lower(azurerm_user_assigned_identity.uai.id)
@@ -129,4 +146,8 @@ output "resource_group_name" {
 
 output "user_managed_identity_id" {
   value = lower(azurerm_user_assigned_identity.uai.id)
+}
+
+output "state_file_container" {
+  value = port_entity.state_container.identifier
 }
