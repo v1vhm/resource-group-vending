@@ -66,14 +66,66 @@ output "resource_group_name" {
   value = azurerm_resource_group.rg.name
 }
 
-output "user_managed_identity_id" {
-  value = lower(azurerm_user_assigned_identity.uai.id)
+output "resource_group_location" {
+  value = azurerm_resource_group.rg.location
+}
+
+output "resource_group_tags" {
+  value = azurerm_resource_group.rg.tags
+}
+
+output "storage_account_id" {
+  value = lower(azurerm_storage_account.sa.id)
+}
+
+output "storage_account_name" {
+  value = azurerm_storage_account.sa.name
+}
+
+output "storage_account_location" {
+  value = azurerm_storage_account.sa.location
+}
+
+output "storage_account_is_hns_enabled" {
+  value = azurerm_storage_account.sa.is_hns_enabled
+}
+
+output "storage_account_primary_location" {
+  value = azurerm_storage_account.sa.primary_location
+}
+
+output "storage_account_secondary_location" {
+  value = azurerm_storage_account.sa.secondary_location
+}
+
+output "storage_account_allow_blob_public_access" {
+  value = azurerm_storage_account.sa.allow_nested_items_to_be_public
+}
+
+output "storage_account_tags" {
+  value = azurerm_storage_account.sa.tags
+}
+
+output "state_container_name" {
+  value = azurerm_storage_container.tfstate.name
 }
 
 output "state_file_container" {
   value = lower("${azurerm_storage_account.sa.name}-tfstate")
 }
 
+output "user_managed_identity_id" {
+  value = lower(azurerm_user_assigned_identity.uai.id)
+}
+
+output "user_managed_identity_name" {
+  value = azurerm_user_assigned_identity.uai.name
+}
+
 output "user_managed_identity_client_id" {
   value = azurerm_user_assigned_identity.uai.client_id
+}
+
+output "user_managed_identity_tags" {
+  value = azurerm_user_assigned_identity.uai.tags
 }
