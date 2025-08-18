@@ -112,10 +112,13 @@ jobs:
           EOF
           echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: environment-file
-          path: ${{ steps.create_env_file.outputs.path }}
+      - name: Commit environment file
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add ${{ steps.create_env_file.outputs.path }}
+          git commit -m "Add environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}"
+          git push origin HEAD:main
 
       - name: Compute container name
         id: compute_container
@@ -205,13 +208,8 @@ jobs:
           logMessage: 'Starting plan stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
       - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
         with:
-          name: environment-file
-
-      - name: Move environment file
-        run: mv $(basename ${{ needs.prepare.outputs.environment_file }}) ${{ needs.prepare.outputs.environment_file }}
+          ref: main
 
       - name: Verify environment file
         run: test -f "$TF_VAR_environment_file"
@@ -300,6 +298,8 @@ jobs:
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
       STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
+    outputs:
+      commit_sha: ${{ steps.commit.outputs.sha }}
     steps:
       - name: Log start apply
         uses: port-labs/port-github-action@v1
@@ -312,13 +312,8 @@ jobs:
           logMessage: 'Starting apply stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
       - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
         with:
-          name: environment-file
-
-      - name: Move environment file
-        run: mv $(basename ${{ needs.prepare.outputs.environment_file }}) ${{ needs.prepare.outputs.environment_file }}
+          ref: main
 
       - name: Verify environment file
         run: test -f "$TF_VAR_environment_file"
@@ -408,10 +403,15 @@ jobs:
             echo "state_file_container: $STATE_FILE_CONTAINER"
           } >> "$TF_VAR_environment_file"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: environment-file
-          path: ${{ env.TF_VAR_environment_file }}
+      - name: Commit updated environment file
+        id: commit
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add $TF_VAR_environment_file
+          git commit -m "Update environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Mark apply success
         if: success()
@@ -451,14 +451,11 @@ jobs:
       ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
         with:
-          name: environment-file
+          ref: main
 
       - name: Load deployment metadata
         run: |
-          mv $(basename "$ENV_FILE") "$ENV_FILE"
           DEPLOYMENT_ENVIRONMENT=$(grep '^deployment_environment:' "$ENV_FILE" | awk '{print $2}')
           DEPLOYMENT_IDENTITY=$(grep '^deployment_identity:' "$ENV_FILE" | awk '{print $2}')
           AZURE_SUBSCRIPTION=$(grep '^azure_subscription:' "$ENV_FILE" | awk '{print $2}')
@@ -487,27 +484,8 @@ jobs:
       - name: Verify environment file
         run: test -f "$ENV_FILE"
 
-      - name: Commit updated environment file
-        id: commit
-        run: |
-          set -euo pipefail
-          finish() {
-            status=$?
-            echo "log<<EOF" >> "$GITHUB_OUTPUT"
-            cat commit.log >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            exit $status
-          }
-          trap finish ERR
-          exec > >(tee commit.log) 2>&1
-          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
-          git config user.name "getport-io[bot]"
-          git add $ENV_FILE
-          git commit -m "Update product environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
-          git push origin HEAD:main
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          trap - ERR
-          finish
+      - id: get_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Log finalize completion
         if: success()
@@ -519,7 +497,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: >-
-            Finalized ${{ env.ENV_FILE }} with commit ${{ steps.commit.outputs.sha }} and ids env=${{ env.DEPLOYMENT_ENVIRONMENT }},
+            Finalized ${{ env.ENV_FILE }} with commit ${{ steps.get_sha.outputs.sha }} and ids env=${{ env.DEPLOYMENT_ENVIRONMENT }},
             identity=${{ env.DEPLOYMENT_IDENTITY }},
             subscription=${{ env.AZURE_SUBSCRIPTION }}
 
@@ -533,4 +511,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Finalize stage failed: ${{ steps.commit.outputs.log }}"
+          logMessage: "Finalize stage failed"
