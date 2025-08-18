@@ -1,6 +1,6 @@
 # Guidelines for AI‐assisted development
 
-This repository provisions Azure resource groups for lab or test environments using Terraform.  It is driven by a GitHub Actions workflow that is triggered by Port and commits YAML configuration files under the `environments/` directory.  Each environment file defines metadata (identifier, title, location, environment tier, Port run id, product name and identifier, and optionally a list of associated services).  The workflow then uses Terraform modules to create a resource group, storage account and user‑assigned identity in Azure, tags the resources, registers them with Port and updates the environment file with the resulting identifiers such as the resource group id, identity id and subscription.
+This repository provisions Azure resource groups for lab or test environments using Terraform.  It is driven by a GitHub Actions workflow that is triggered by Port and commits YAML configuration files under the `environments/` directory.  Each environment file defines metadata (identifier, title, location, environment tier, Port run id, product name and identifier, and optionally a list of associated services).  The workflow uses Terraform modules to create a resource group, storage account and user‑assigned identity in Azure and tags the resources.  The root configuration registers them with Port and updates the environment file with the resulting identifiers such as the resource group id, identity id and subscription.
 
 The goal of this guide is to help **Codex**, or any automated agent, make changes to the repository confidently and consistently.  It captures conventions, file structures and recent lessons learned so that future pull requests remain coherent.  Before making changes, read this document and the repository’s `README.md` to ensure you understand how the pieces fit together.
 
@@ -17,7 +17,7 @@ The high‑level layout is:
 | `.github/workflows/provision.yml`   | GitHub Actions workflow that provisions environments.  It accepts inputs such as `product_name`, `product_short_name`, `location`, `environment`, `product_identifier` and a JSON‑encoded `port_context`.  The workflow creates a YAML file under `environments/`, commits it, creates a dedicated Terraform state container, runs Terraform `init`/`plan`/`apply` and appends Terraform outputs back into the YAML file. Services can be associated later via a separate workflow. |
 | `environments/`                     | Contains one YAML file per environment.  These files follow the schema described in the README: `environment_identifier`, `environment_title`, `location`, `environment` (dev/test/prod/acct), `port_run_id`, `product_name`, `product_identifier`, `status` (records `in_progress`, `succeeded` or `failed`) and an optional `services` list with `service_identifier` and `github` details for each service.  Workflows and Terraform read these files to provision resources and attach services. |
 | `terraform/`                        | Root Terraform configuration.  It uses a local variable to read all YAML files in the `environments` folder and creates a `module` instance for each environment.  It processes any services listed for association and outputs deployment details. |
-| `terraform/modules/resource_group/` | Module that creates the Azure resource group, storage account and user‑managed identity.  It names resources using the pattern `rg-${var.product_identifier}-${var.environment}-${var.location}`, sets tags based on the YAML properties and creates a federated credential for GitHub Actions. |
+| `terraform/modules/resource_group/` | Module that creates the Azure resource group, storage account and user‑managed identity.  It names resources using the pattern `rg-${var.product_identifier}-${var.environment}-${var.location}`, sets tags based on the YAML properties, creates a federated credential for GitHub Actions and outputs resource attributes for the root configuration.  Port entities are registered in the root, not within this module. |
 
 ## Naming conventions and data contracts
 
@@ -49,8 +49,19 @@ Workflow steps that depend on previous steps should explicitly set `if: success(
 
 * **Variables and modules:** When adding new fields to the environment YAML schema (e.g., a new tag or property), declare a corresponding variable in `terraform/modules/resource_group/variables.tf` and propagate it through `terraform/main.tf` into the module and resources.  Be consistent: if a variable is optional, give it a default value or use `try()` in the module to avoid errors.
 * **Resource naming:** Azure resources have naming rules (storage accounts require globally unique names, 3–24 lowercase alphanumeric characters; resource groups can include alphanumerics, hyphens and underscores).  The module currently concatenates the product identifier, environment and location to form names.  If you change the naming pattern, ensure it remains valid and update all dependent resources and outputs.
-* **Outputs:** The resource group module exposes `resource_group_id`, `resource_group_name` and `user_managed_identity_id`.  The root configuration outputs `deployment_environment`, `deployment_identity` and `azure_subscription` so the workflow can record them in the environment file.  When adding new outputs, update the workflow step that appends these values (the step uses `jq` to extract them from `terraform output`).  Maintain JSON parsing rather than relying on string matching.
-* **Port integration:** Use the `port_labs` provider to register additional entities or relations.  Keep identifiers stable and avoid changing blueprint names.  When adding relations, ensure the related identifier exists.
+* **Outputs:** The resource group module exposes detailed attributes for the
+  resource group, storage account, state container and user‑managed identity.
+  The root configuration consumes these outputs to register Port entities and
+  exposes high‑level values (`deployment_environment`, `deployment_identity`,
+  `azure_subscription`, `state_file_container` and
+  `user_managed_identity_client_id`) so the workflow can record them in the
+  environment file.  When adding new outputs, update the workflow step that
+  appends these values (the step uses `jq` to extract them from `terraform
+  output`).  Maintain JSON parsing rather than relying on string matching.
+* **Port integration:** Use the `port_labs` provider in the root configuration
+  to register additional entities or relations.  Keep identifiers stable and
+  avoid changing blueprint names.  The resource group module does not create
+  Port entities.  When adding relations, ensure the related identifier exists.
 
 ## Adding or updating environments
 
