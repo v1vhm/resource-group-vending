@@ -116,11 +116,11 @@ resource "port_entity" "user_managed_identity" {
 }
 
 output "deployment_environment" {
-  value = module.environment.resource_group_id
+  value = port_entity.resource_group.identifier
 }
 
 output "deployment_identity" {
-  value = module.environment.user_managed_identity_id
+  value = port_entity.user_managed_identity.identifier
 }
 
 output "azure_subscription" {
@@ -128,7 +128,7 @@ output "azure_subscription" {
 }
 
 output "state_file_container" {
-  value = module.environment.state_file_container
+  value = port_entity.state_container.identifier
 }
 
 output "user_managed_identity_client_id" {
