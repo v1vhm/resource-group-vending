@@ -5,4 +5,4 @@ environment: test
 product_name: Test Product
 product_identifier: TESTPR
 port_run_id: r_lFYYEtV6eQvpe6mm
-status: in_progress
+status: failed
