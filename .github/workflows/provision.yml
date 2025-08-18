@@ -25,9 +25,14 @@ on:
         description: Includes the action's run id
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       id-token: write
       contents: write
@@ -113,7 +118,10 @@ jobs:
           echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
 
       - name: Mark environment in progress
-        run: echo "status: in_progress" >> "${{ steps.create_env_file.outputs.path }}"
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          echo "status: in_progress" >> "${{ steps.create_env_file.outputs.path }}"
 
       - name: Commit environment file
         run: |
@@ -182,6 +190,7 @@ jobs:
   plan:
     needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       id-token: write
       contents: write
@@ -286,6 +295,7 @@ jobs:
   apply:
     needs: [prepare, plan]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: write
@@ -446,6 +456,7 @@ jobs:
     needs: apply
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     env:
