@@ -1,0 +1,8 @@
+environment_identifier: test_product_prod_ukwest
+environment_title: Test Product prod
+location: ukwest
+environment: prod
+product_name: Test Product
+product_identifier: TESTPR
+port_run_id: r_Tj7OohvnDLUzZoAW
+status: in_progress
