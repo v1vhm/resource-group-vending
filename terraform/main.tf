@@ -54,3 +54,7 @@ output "state_file_container" {
   value = module.environment.state_file_container
 }
 
+output "user_managed_identity_client_id" {
+  value = module.environment.user_managed_identity_client_id
+}
+
