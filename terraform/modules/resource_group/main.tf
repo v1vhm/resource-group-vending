@@ -151,3 +151,7 @@ output "user_managed_identity_id" {
 output "state_file_container" {
   value = port_entity.state_container.identifier
 }
+
+output "user_managed_identity_client_id" {
+  value = azurerm_user_assigned_identity.uai.client_id
+}
