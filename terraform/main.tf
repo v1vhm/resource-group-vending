@@ -5,18 +5,12 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">= 3.0"
     }
-    port = {
-      source  = "port-labs/port-labs"
-      version = "~> 2"
-    }
   }
 }
 
 provider "azurerm" {
   features {}
 }
-
-provider "port" {}
 
 data "azurerm_subscription" "current" {}
 
@@ -35,7 +29,6 @@ module "environment" {
   product_name       = local.product_name
   product_identifier = local.product_identifier
   services           = local.services
-  port_run_id        = var.port_run_id
 }
 
 output "deployment_environment" {
