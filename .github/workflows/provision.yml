@@ -300,11 +300,6 @@ jobs:
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
       STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
-    outputs:
-      deployment_environment: ${{ steps.capture_outputs.outputs.deployment_environment }}
-      deployment_identity: ${{ steps.capture_outputs.outputs.deployment_identity }}
-      azure_subscription: ${{ steps.capture_outputs.outputs.azure_subscription }}
-      state_file_container: ${{ steps.capture_outputs.outputs.state_file_container }}
     steps:
       - name: Log start apply
         uses: port-labs/port-github-action@v1
@@ -391,20 +386,32 @@ jobs:
           logMessage: ${{ steps.apply.outputs.log }}
 
       - name: Capture outputs
-        id: capture_outputs
         run: |
           terraform -chdir=terraform output -json > tfoutput.json
           for key in deployment_environment deployment_identity azure_subscription state_file_container; do
             value=$(jq -r ".${key}.value" tfoutput.json)
-            echo "${key}<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$value" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            varname=$(echo "$key" | tr '[:lower:]' '[:upper:]')
+            echo "${varname}=$value" >> "$GITHUB_ENV"
           done
 
       - uses: actions/upload-artifact@v4
         with:
           name: tfoutput
           path: tfoutput.json
+
+      - name: Append outputs to environment file
+        run: |
+          {
+            echo "deployment_environment: $DEPLOYMENT_ENVIRONMENT"
+            echo "deployment_identity: $DEPLOYMENT_IDENTITY"
+            echo "azure_subscription: $AZURE_SUBSCRIPTION"
+            echo "state_file_container: $STATE_FILE_CONTAINER"
+          } >> "$TF_VAR_environment_file"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: environment-file
+          path: ${{ env.TF_VAR_environment_file }}
 
       - name: Mark apply success
         if: success()
@@ -416,9 +423,9 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: >-
-            Terraform apply complete for env=${{ steps.capture_outputs.outputs.deployment_environment }},
-            identity=${{ steps.capture_outputs.outputs.deployment_identity }},
-            subscription=${{ steps.capture_outputs.outputs.azure_subscription }}
+            Terraform apply complete for env=${{ env.DEPLOYMENT_ENVIRONMENT }},
+            identity=${{ env.DEPLOYMENT_IDENTITY }},
+            subscription=${{ env.AZURE_SUBSCRIPTION }}
 
       - name: Mark apply failure
         if: failure()
@@ -443,15 +450,25 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
-      - name: Verify apply outputs
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: environment-file
+
+      - name: Load deployment metadata
         run: |
-          test -n "${{ needs.apply.outputs.deployment_environment }}" || { echo 'deployment_environment output is empty' >&2; exit 1; }
-          test -n "${{ needs.apply.outputs.deployment_identity }}" || { echo 'deployment_identity output is empty' >&2; exit 1; }
-          test -n "${{ needs.apply.outputs.azure_subscription }}" || { echo 'azure_subscription output is empty' >&2; exit 1; }
+          mv $(basename "$ENV_FILE") "$ENV_FILE"
+          DEPLOYMENT_ENVIRONMENT=$(grep '^deployment_environment:' "$ENV_FILE" | awk '{print $2}')
+          DEPLOYMENT_IDENTITY=$(grep '^deployment_identity:' "$ENV_FILE" | awk '{print $2}')
+          AZURE_SUBSCRIPTION=$(grep '^azure_subscription:' "$ENV_FILE" | awk '{print $2}')
+          STATE_FILE_CONTAINER=$(grep '^state_file_container:' "$ENV_FILE" | awk '{print $2}')
+          test -n "$DEPLOYMENT_ENVIRONMENT" && test -n "$DEPLOYMENT_IDENTITY" && test -n "$AZURE_SUBSCRIPTION" && test -n "$STATE_FILE_CONTAINER"
           {
-            echo "DEPLOYMENT_ENVIRONMENT=${{ needs.apply.outputs.deployment_environment }}"
-            echo "DEPLOYMENT_IDENTITY=${{ needs.apply.outputs.deployment_identity }}"
-            echo "AZURE_SUBSCRIPTION=${{ needs.apply.outputs.azure_subscription }}"
+            echo "DEPLOYMENT_ENVIRONMENT=$DEPLOYMENT_ENVIRONMENT"
+            echo "DEPLOYMENT_IDENTITY=$DEPLOYMENT_IDENTITY"
+            echo "AZURE_SUBSCRIPTION=$AZURE_SUBSCRIPTION"
+            echo "STATE_FILE_CONTAINER=$STATE_FILE_CONTAINER"
           } >> "$GITHUB_ENV"
 
       - name: Log start finalize
@@ -467,26 +484,8 @@ jobs:
             identity=${{ env.DEPLOYMENT_IDENTITY }},
             subscription=${{ env.AZURE_SUBSCRIPTION }}
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: environment-file
-
-      - name: Move environment file
-        run: mv $(basename "$ENV_FILE") "$ENV_FILE"
-
       - name: Verify environment file
         run: test -f "$ENV_FILE"
-
-      - name: Append outputs to environment file
-        run: |
-          {
-            echo "deployment_environment: $DEPLOYMENT_ENVIRONMENT"
-            echo "deployment_identity: $DEPLOYMENT_IDENTITY"
-            echo "azure_subscription: $AZURE_SUBSCRIPTION"
-            echo "state_file_container: ${{ needs.apply.outputs.state_file_container }}"
-          } >> $ENV_FILE
 
       - name: Commit updated environment file
         id: commit
