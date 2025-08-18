@@ -112,6 +112,9 @@ jobs:
           EOF
           echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
 
+      - name: Mark environment in progress
+        run: echo "status: in_progress" >> "${{ steps.create_env_file.outputs.path }}"
+
       - name: Commit environment file
         run: |
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
@@ -441,6 +444,7 @@ jobs:
 
   finalize:
     needs: apply
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -483,6 +487,26 @@ jobs:
 
       - name: Verify environment file
         run: test -f "$ENV_FILE"
+
+      - name: Install yq
+        run: sudo snap install yq --classic
+
+      - name: Mark environment as succeeded
+        if: ${{ success() }}
+        run: yq e -i '.status = "succeeded"' "$ENV_FILE"
+
+      - name: Mark environment as failed
+        if: ${{ failure() }}
+        run: yq e -i '.status = "failed"' "$ENV_FILE"
+
+      - name: Commit finalized environment file
+        if: ${{ always() }}
+        run: |
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add "$ENV_FILE"
+          git commit -m "Update environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} status"
+          git push origin HEAD:main
 
       - id: get_sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
