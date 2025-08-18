@@ -134,6 +134,13 @@ resource "port_entity" "user_managed_identity" {
   run_id = var.port_run_id
 
   depends_on = [azurerm_user_assigned_identity.uai]
+
+  lifecycle {
+    precondition {
+      condition     = length(azurerm_user_assigned_identity.uai.client_id) > 0
+      error_message = "azurerm_user_assigned_identity.uai.client_id is empty"
+    }
+  }
 }
 
 output "resource_group_id" {
