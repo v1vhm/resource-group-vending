@@ -5,4 +5,4 @@ environment: acct
 product_name: Test Product
 product_identifier: TESTPR
 port_run_id: r_Gx0wMmlXhwd43lfM
-status: in_progress
+status: failed
