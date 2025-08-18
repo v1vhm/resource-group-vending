@@ -384,6 +384,14 @@ jobs:
         id: apply
         run: ./scripts/terraform-run.sh apply tfplan apply.log
 
+      - name: Show identity states
+        if: success()
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          terraform -chdir=terraform state show module.environment.azurerm_user_assigned_identity.uai 2>&1 | tee -a apply.log
+          terraform -chdir=terraform state show module.environment.port_entity.user_managed_identity 2>&1 | tee -a apply.log
+
       - name: Log apply output
         if: success()
         uses: port-labs/port-github-action@v1
