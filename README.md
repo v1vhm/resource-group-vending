@@ -23,6 +23,30 @@ The `status` line records the workflow's progress: it starts as `in_progress` an
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
 
+## Terraform modules and outputs
+
+The root Terraform configuration instantiates a single module under
+`terraform/modules/resource_group` that is responsible only for
+provisioning Azure infrastructure. The module exposes detailed
+attributes for each resource, including:
+
+- `resource_group_*` values for the resource group
+- `storage_account_*` values and the `state_container_name`/
+  `state_file_container`
+- `user_managed_identity_*` values for the identity
+
+`terraform/main.tf` consumes these outputs to register Port entities and
+then returns high‑level values used by the GitHub Actions workflow:
+
+- `deployment_environment` – the resource group id
+- `deployment_identity` – the user managed identity id
+- `azure_subscription` – the subscription id
+- `state_file_container` – the state container id
+- `user_managed_identity_client_id`
+
+Port entities are created in the root configuration; the module itself
+does not interact with Port.
+
 ## Conventions
 
 All Azure resource IDs referenced in environment files or Port relations must be lowercase.
