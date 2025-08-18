@@ -311,6 +311,7 @@ jobs:
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
       STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
+      TF_LOG: TRACE
     outputs:
       commit_sha: ${{ steps.commit.outputs.sha }}
     steps:
