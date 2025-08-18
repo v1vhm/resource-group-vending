@@ -132,6 +132,8 @@ resource "port_entity" "user_managed_identity" {
   }
 
   run_id = var.port_run_id
+
+  depends_on = [azurerm_user_assigned_identity.uai]
 }
 
 output "resource_group_id" {
