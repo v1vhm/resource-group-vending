@@ -5,11 +5,18 @@ cmd=$1
 plan_file=$2
 log_file=$3
 
+if [[ -n "${TF_LOG_LEVEL:-}" ]]; then
+  export TF_LOG="$TF_LOG_LEVEL"
+  export TF_LOG_PATH="$log_file"
+fi
+
 finish() {
   status=$?
-  echo "log<<EOF" >> "$GITHUB_OUTPUT"
-  cat "$log_file" >> "$GITHUB_OUTPUT"
-  echo "EOF" >> "$GITHUB_OUTPUT"
+  {
+    echo "log<<EOF"
+    cat "$log_file"
+    echo "EOF"
+  } >> "$GITHUB_OUTPUT"
   exit $status
 }
 trap finish ERR
