@@ -17,7 +17,10 @@ resource "azurerm_resource_group" "rg" {
 }
 
 resource "azurerm_storage_account" "sa" {
-  name                     = "st${lower(var.product_identifier)}${var.environment}"
+  # Name storage accounts using the tenant org "v1vhm" followed by the
+  # product identifier, environment type and Azure location to ensure
+  # global uniqueness.
+  name                     = "v1vhm${lower(var.product_identifier)}${var.environment}${var.location}"
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = var.location
   account_tier             = "Standard"

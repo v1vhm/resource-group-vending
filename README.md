@@ -17,7 +17,7 @@ services: []                       # optional; services can be associated later
 deployment_environment: /subscriptions/.../resourceGroups/rg-prod-12345-dev-eastus
 deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai-prod-12345-dev-eastus
 azure_subscription: /subscriptions/...      # subscription id
-state_file_container: /subscriptions/.../storageAccounts/vendingtfstate/blobServices/default/containers/prod-12345dev
+  state_file_container: v1vhmprod-12345deveastus-tfstate
 ```
 The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. The fields `deployment_environment`, `deployment_identity`, `azure_subscription` and `state_file_container` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
 
@@ -49,7 +49,7 @@ does not interact with Port.
 
 ## Conventions
 
-All Azure resource IDs referenced in environment files or Port relations must be lowercase.
+All Azure resource IDs referenced in environment files or Port relations must be lowercase. Storage account names use the pattern `v1vhm<product_identifier><environment><location>` to ensure global uniqueness.
 
 ## Provisioning an environment
 Port invokes the **Provision Environment** workflow with environment details. The workflow writes the environment file and commits it immediately so that subsequent jobs read the committed file rather than workflow artifacts. On success, the workflow provisions the resources and updates the same file with outputs and a final status.
