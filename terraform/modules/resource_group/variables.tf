@@ -14,4 +14,3 @@ variable "services" {
   }))
   default = []
 }
-variable "port_run_id" { type = string }

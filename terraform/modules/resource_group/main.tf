@@ -3,9 +3,6 @@ terraform {
     azurerm = {
       source = "hashicorp/azurerm"
     }
-    port = {
-      source = "port-labs/port-labs"
-    }
   }
 }
 
@@ -39,8 +36,6 @@ resource "azurerm_user_assigned_identity" "uai" {
   resource_group_name = azurerm_resource_group.rg.name
 }
 
-data "azurerm_subscription" "current" {}
-
 resource "azurerm_role_assignment" "owner" {
   scope                = azurerm_resource_group.rg.id
   role_definition_name = "Owner"
@@ -63,86 +58,6 @@ resource "azurerm_federated_identity_credential" "github" {
   audience            = ["api://AzureADTokenExchange"]
 }
 
-resource "port_entity" "resource_group" {
-  blueprint  = "azureResourceGroup"
-  identifier = lower(azurerm_resource_group.rg.id)
-  title      = azurerm_resource_group.rg.name
-
-  properties = {
-    location = azurerm_resource_group.rg.location
-    tags     = azurerm_resource_group.rg.tags
-  }
-
-  relations = {
-    single_relations = {
-      subscription = lower(data.azurerm_subscription.current.id)
-    }
-  }
-
-  run_id = var.port_run_id
-}
-
-resource "port_entity" "storage_account" {
-  blueprint  = "azureStorageAccount"
-  identifier = lower(azurerm_storage_account.sa.id)
-  title      = azurerm_storage_account.sa.name
-
-  properties = {
-    location              = azurerm_storage_account.sa.location
-    isHnsEnabled          = azurerm_storage_account.sa.is_hns_enabled
-    primaryLocation       = azurerm_storage_account.sa.primary_location
-    secondaryLocation     = azurerm_storage_account.sa.secondary_location
-    allowBlobPublicAccess = azurerm_storage_account.sa.allow_nested_items_to_be_public
-    tags                  = azurerm_storage_account.sa.tags
-  }
-
-  relations = {
-    single_relations = {
-      resourceGroup = lower(port_entity.resource_group.identifier)
-    }
-  }
-
-  run_id = var.port_run_id
-}
-
-resource "port_entity" "state_container" {
-  blueprint  = "azureStorageContainer"
-  identifier = lower("${azurerm_storage_account.sa.name}-tfstate")
-  title      = azurerm_storage_container.tfstate.name
-  relations = {
-    storageAccount = lower(azurerm_storage_account.sa.id)
-  }
-  run_id = var.port_run_id
-}
-
-resource "port_entity" "user_managed_identity" {
-  blueprint  = "azureUserManagedIdentity"
-  identifier = lower(azurerm_user_assigned_identity.uai.id)
-  title      = azurerm_user_assigned_identity.uai.name
-
-  properties = {
-    clientId = azurerm_user_assigned_identity.uai.client_id
-    tags     = azurerm_user_assigned_identity.uai.tags
-  }
-
-  relations = {
-    single_relations = {
-      resource_group = lower(port_entity.resource_group.identifier)
-    }
-  }
-
-  run_id = var.port_run_id
-
-  depends_on = [azurerm_user_assigned_identity.uai]
-
-  lifecycle {
-    precondition {
-      condition     = length(azurerm_user_assigned_identity.uai.client_id) > 0
-      error_message = "azurerm_user_assigned_identity.uai.client_id is empty"
-    }
-  }
-}
-
 output "resource_group_id" {
   value = lower(azurerm_resource_group.rg.id)
 }
@@ -156,7 +71,7 @@ output "user_managed_identity_id" {
 }
 
 output "state_file_container" {
-  value = port_entity.state_container.identifier
+  value = lower("${azurerm_storage_account.sa.name}-tfstate")
 }
 
 output "user_managed_identity_client_id" {
