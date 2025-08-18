@@ -248,6 +248,7 @@ jobs:
             -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
             -reconfigure
 
+      # Set TF_LOG_LEVEL (e.g., TRACE) to capture detailed Terraform logs
       - name: Terraform Plan
         id: plan
         run: ./scripts/terraform-run.sh plan tfplan plan.log
@@ -378,6 +379,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting Terraform Apply'
 
+      # Set TF_LOG_LEVEL (e.g., TRACE) to capture detailed Terraform logs
       - name: Terraform Apply
         id: apply
         run: ./scripts/terraform-run.sh apply tfplan apply.log
