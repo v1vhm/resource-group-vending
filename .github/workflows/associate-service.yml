@@ -184,7 +184,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          blueprint: request
+          blueprint: link_environment_request
           identifier: ${{ inputs.request_identifier }}
           properties: >-
             {"status": "Configuring Service"}
@@ -208,7 +208,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: UPSERT
-          blueprint: request
+          blueprint: link_environment_request
           identifier: ${{ inputs.request_identifier }}
           properties: >-
             {"status": "Failed"}
