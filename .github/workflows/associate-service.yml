@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       environment_identifier:
-        description: 'Environment identifier (<productidentifier>_<environment>_<location>)'
+        description: 'Environment identifier (<product_identifier>_<environment>_<location> in lower case)'
         required: true
       service_identifier:
         description: 'Service identifier'
