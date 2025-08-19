@@ -40,6 +40,7 @@ jobs:
       location: ${{ steps.env.outputs.location }}
       env_short_name: ${{ steps.env.outputs.env_short_name }}
       container_name: ${{ steps.container.outputs.container_name }}
+      environment_file: ${{ steps.env.outputs.environment_file }}
     steps:
       - name: Log start associate
         uses: port-labs/port-github-action@v1
@@ -59,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           IFS=$'\n\t'
-          ENV_FILE=environments/${{ inputs.environment_identifier }}.yaml
+          ENV_FILE="${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml"
           if [ ! -f "$ENV_FILE" ]; then
             echo "Environment file not found" >&2
             exit 1
@@ -73,6 +74,7 @@ jobs:
             echo "environment=$ENVIRONMENT"
             echo "location=$LOCATION"
             echo "env_short_name=$ENV_SHORT_NAME"
+            echo "environment_file=$ENV_FILE"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set storage container name
@@ -113,7 +115,7 @@ jobs:
           sed -i 's/^          //' update_service.py
           python update_service.py
         env:
-          ENV_FILE: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
+          ENV_FILE: ${{ steps.env.outputs.environment_file }}
           SERVICE_ID: ${{ inputs.service_identifier }}
           GITHUB_REPO: ${{ inputs.github_repo }}
 
@@ -124,7 +126,7 @@ jobs:
           IFS=$'\n\t'
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
-          git add environments/${{ inputs.environment_identifier }}.yaml
+          git add "${{ steps.env.outputs.environment_file }}"
           git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }}"
           git push origin HEAD:main
 
@@ -142,7 +144,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
+      TF_VAR_environment_file: ${{ needs.prepare.outputs.environment_file }}
       PORT_RUN_ID: ${{ inputs.port_run_id }}
       TF_VAR_port_run_id: ${{ inputs.port_run_id }}
     outputs:
@@ -202,12 +204,20 @@ jobs:
           exit $status
 
   finalize:
-    needs: terraform
+    needs:
+      - prepare
+      - terraform
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       PORT_RUN_ID: ${{ inputs.port_run_id }}
+      PRODUCT_IDENTIFIER: ${{ needs.prepare.outputs.product_identifier }}
+      ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+      LOCATION: ${{ needs.prepare.outputs.location }}
+      ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
+      CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+      ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
     steps:
       - name: Update request status
         if: ${{ needs.terraform.result == 'success' }}
@@ -231,7 +241,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
+          logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}'
 
       - name: Update request failure status
         if: ${{ needs.terraform.result != 'success' }}
@@ -256,4 +266,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Associate stage failed: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
+          logMessage: "Associate stage failed for ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
