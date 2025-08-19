@@ -12,18 +12,22 @@ fi
 
 finish() {
   status=$?
-  {
-    echo "log<<EOF"
-    cat "$log_file"
-    echo "EOF"
-  } >> "$GITHUB_OUTPUT"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+      echo "log<<EOF"
+      cat "$log_file"
+      echo "EOF"
+    } >> "$GITHUB_OUTPUT"
+  fi
   exit $status
 }
 trap finish ERR
 
 if [ "$cmd" = "plan" ]; then
   terraform -chdir=terraform plan -out="$plan_file" -no-color 2>&1 | tee "$log_file"
-  echo "path=$plan_file" >> "$GITHUB_OUTPUT"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "path=$plan_file" >> "$GITHUB_OUTPUT"
+  fi
 elif [ "$cmd" = "apply" ]; then
   terraform -chdir=terraform apply -auto-approve -no-color "$plan_file" 2>&1 | tee "$log_file"
 else
