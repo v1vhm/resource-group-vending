@@ -384,14 +384,6 @@ jobs:
         id: apply
         run: ./scripts/terraform-run.sh apply tfplan apply.log
 
-      - name: Show identity states
-        if: success()
-        run: |
-          set -euo pipefail
-          IFS=$'\n\t'
-          terraform -chdir=terraform state show module.environment.azurerm_user_assigned_identity.uai 2>&1 | tee -a apply.log
-          terraform -chdir=terraform state show module.environment.port_entity.user_managed_identity 2>&1 | tee -a apply.log
-
       - name: Log apply output
         if: success()
         uses: port-labs/port-github-action@v1
@@ -437,19 +429,6 @@ jobs:
           git commit -m "Update environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
           git push origin HEAD:main
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Upsert managed identity clientId
-        if: success()
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: UPSERT
-          blueprint: azureUserManagedIdentity
-          identifier: ${{ env.DEPLOYMENT_IDENTITY }}
-          properties: >-
-            {"clientId": "${{ env.USER_MANAGED_IDENTITY_CLIENT_ID }}"}
 
       - name: Mark apply success
         if: success()
