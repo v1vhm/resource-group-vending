@@ -68,7 +68,7 @@ jobs:
           PRODUCT_IDENTIFIER=$(grep '^product_identifier:' "$ENV_FILE" | awk '{print $2}')
           ENVIRONMENT=$(grep '^environment:' "$ENV_FILE" | awk '{print $2}')
           LOCATION=$(grep '^location:' "$ENV_FILE" | awk '{print $2}')
-          ENV_SHORT_NAME=$(grep '^environment_short_name:' "$ENV_FILE" | awk '{print $2}')
+          ENV_SHORT_NAME=$(echo "$PRODUCT_IDENTIFIER" | tr '[:upper:]' '[:lower:]')
           {
             echo "product_identifier=$PRODUCT_IDENTIFIER"
             echo "environment=$ENVIRONMENT"
