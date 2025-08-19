@@ -26,22 +26,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  associate:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       id-token: write
       contents: write
     env:
-      ARM_USE_OIDC: true
-      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
-      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
-      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
       PORT_RUN_ID: ${{ inputs.port_run_id }}
-      TF_VAR_port_run_id: ${{ inputs.port_run_id }}
+    outputs:
+      product_identifier: ${{ steps.env.outputs.product_identifier }}
+      environment: ${{ steps.env.outputs.environment }}
+      location: ${{ steps.env.outputs.location }}
+      env_short_name: ${{ steps.env.outputs.env_short_name }}
+      container_name: ${{ steps.container.outputs.container_name }}
     steps:
       - name: Log start associate
         uses: port-labs/port-github-action@v1
@@ -56,6 +54,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Load environment context
+        id: env
         shell: bash
         run: |
           set -euo pipefail
@@ -69,18 +68,21 @@ jobs:
           ENVIRONMENT=$(grep '^environment:' "$ENV_FILE" | awk '{print $2}')
           LOCATION=$(grep '^location:' "$ENV_FILE" | awk '{print $2}')
           ENV_SHORT_NAME=$(grep '^environment_short_name:' "$ENV_FILE" | awk '{print $2}')
-          echo "PRODUCT_IDENTIFIER=$PRODUCT_IDENTIFIER" >> $GITHUB_ENV
-          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
-          echo "LOCATION=$LOCATION" >> $GITHUB_ENV
-          echo "ENV_SHORT_NAME=$ENV_SHORT_NAME" >> $GITHUB_ENV
+          {
+            echo "product_identifier=$PRODUCT_IDENTIFIER"
+            echo "environment=$ENVIRONMENT"
+            echo "location=$LOCATION"
+            echo "env_short_name=$ENV_SHORT_NAME"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set storage container name
+        id: container
         shell: bash
         run: |
           set -euo pipefail
           IFS=$'\n\t'
-          CONTAINER_NAME=$(echo "${ENV_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          CONTAINER_NAME=$(echo "${{ steps.env.outputs.env_short_name }}${{ steps.env.outputs.environment }}${{ steps.env.outputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
+          echo "container_name=$CONTAINER_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Update services list
         shell: bash
@@ -126,6 +128,29 @@ jobs:
           git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }}"
           git push origin HEAD:main
 
+  terraform:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      ARM_USE_OIDC: true
+      ARM_CLIENT_ID: ${{ secrets.AZURECLIENTID }}
+      ARM_TENANT_ID: ${{ secrets.AZURETENANTID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURESUBSCRIPTIONID }}
+      PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      TF_VAR_environment_file: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
+      PORT_RUN_ID: ${{ inputs.port_run_id }}
+      TF_VAR_port_run_id: ${{ inputs.port_run_id }}
+    outputs:
+      plan_log: ${{ steps.plan.outputs.log }}
+      apply_log: ${{ steps.apply.outputs.log }}
+    steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -144,8 +169,8 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${CONTAINER_NAME}" \
-            -backend-config="key=${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate" \
+            -backend-config="container_name=${{ needs.prepare.outputs.container_name }}" \
+            -backend-config="key=${{ needs.prepare.outputs.product_identifier }}_${{ needs.prepare.outputs.environment }}_${{ needs.prepare.outputs.location }}.tfstate" \
             -reconfigure
 
       - name: Terraform Plan
@@ -176,8 +201,16 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           exit $status
 
+  finalize:
+    needs: terraform
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PORT_RUN_ID: ${{ inputs.port_run_id }}
+    steps:
       - name: Update request status
-        if: success()
+        if: ${{ needs.terraform.result == 'success' }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -190,7 +223,7 @@ jobs:
             {"status": "Configuring Service"}
 
       - name: Log association complete
-        if: success()
+        if: ${{ needs.terraform.result == 'success' }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -201,7 +234,7 @@ jobs:
           logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
 
       - name: Update request failure status
-        if: failure()
+        if: ${{ needs.terraform.result != 'success' }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -214,7 +247,7 @@ jobs:
             {"status": "Failed"}
 
       - name: Log association failure
-        if: failure()
+        if: ${{ needs.terraform.result != 'success' }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -223,4 +256,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Associate stage failed: plan=${{ steps.plan.outputs.log }} apply=${{ steps.apply.outputs.log }}"
+          logMessage: "Associate stage failed: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
