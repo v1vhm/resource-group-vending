@@ -42,15 +42,15 @@ jobs:
       container_name: ${{ steps.container.outputs.container_name }}
       environment_file: ${{ steps.env.outputs.environment_file }}
     steps:
-      - name: Log start associate
-        uses: port-labs/port-github-action@v1
+      - name: Log start
+        uses: port-labs/port-github-action@v2
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Associating service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }} using repo ${{ inputs.github_repo }}'
+          logMessage: 'Starting prepare for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }} via repo ${{ inputs.github_repo }}'
 
       - uses: actions/checkout@v5
 
@@ -130,6 +130,29 @@ jobs:
           git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }}"
           git push origin HEAD:main
 
+      - name: Log summary
+        if: success()
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Environment file updated for ${{ inputs.environment_identifier }} with service ${{ inputs.service_identifier }}'
+
+      - name: Log failure
+        if: failure()
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: 'Prepare job failed for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
+
   terraform:
     needs: prepare
     runs-on: ubuntu-latest
@@ -151,6 +174,16 @@ jobs:
       plan_log: ${{ steps.plan.outputs.log }}
       apply_log: ${{ steps.apply.outputs.log }}
     steps:
+      - name: Log start
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting terraform for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
+
       - uses: actions/checkout@v5
 
       - name: Setup Terraform
@@ -203,6 +236,29 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           exit $status
 
+      - name: Log summary
+        if: success()
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Terraform plan and apply succeeded for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
+
+      - name: Log failure
+        if: failure()
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          status: FAILURE
+          logMessage: "Terraform failed for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}: plan=${{ steps.plan.outputs.log }} apply=${{ steps.apply.outputs.log }}"
+
   finalize:
     needs:
       - prepare
@@ -219,6 +275,16 @@ jobs:
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
     steps:
+      - name: Log start
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Starting finalize for service ${{ inputs.service_identifier }} in ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}'
+
       - name: Update request status
         if: ${{ needs.terraform.result == 'success' }}
         uses: port-labs/port-github-action@v1
@@ -231,17 +297,6 @@ jobs:
           identifier: ${{ inputs.request_identifier }}
           properties: >-
             {"status": "Configuring Service"}
-
-      - name: Log association complete
-        if: ${{ needs.terraform.result == 'success' }}
-        uses: port-labs/port-github-action@v1
-        with:
-          clientId: ${{ secrets.PORT_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          baseUrl: https://api.getport.io
-          operation: PATCH_RUN
-          runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}'
 
       - name: Update request failure status
         if: ${{ needs.terraform.result != 'success' }}
@@ -256,9 +311,20 @@ jobs:
           properties: >-
             {"status": "Failed"}
 
-      - name: Log association failure
-        if: ${{ needs.terraform.result != 'success' }}
-        uses: port-labs/port-github-action@v1
+      - name: Log summary
+        if: success()
+        uses: port-labs/port-github-action@v2
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: PATCH_RUN
+          runId: ${{ env.PORT_RUN_ID }}
+          logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}'
+
+      - name: Log failure
+        if: failure()
+        uses: port-labs/port-github-action@v2
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -266,4 +332,4 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
-          logMessage: "Associate stage failed for ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
+          logMessage: "Finalize stage failed for ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
