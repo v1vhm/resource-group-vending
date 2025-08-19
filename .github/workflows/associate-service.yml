@@ -236,6 +236,16 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           exit $status
 
+      - name: Upload Terraform logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-logs
+          path: |
+            plan.log
+            apply.log
+          if-no-files-found: ignore
+
       - name: Log summary
         if: success()
         uses: port-labs/port-github-action@v2
@@ -333,3 +343,11 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           status: FAILURE
           logMessage: "Finalize stage failed for ${{ env.PRODUCT_IDENTIFIER }}_${{ env.ENVIRONMENT }}_${{ env.LOCATION }}: plan=${{ needs.terraform.outputs.plan_log }} apply=${{ needs.terraform.outputs.apply_log }}"
+
+      - name: Upload environment file
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: environment-file
+          path: ${{ env.ENV_FILE }}
+          if-no-files-found: ignore
