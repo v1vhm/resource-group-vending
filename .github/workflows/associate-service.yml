@@ -200,6 +200,19 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Service association complete for ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
 
+      - name: Update request failure status
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          blueprint: request
+          identifier: ${{ inputs.request_identifier }}
+          properties: >-
+            {"status": "Failed"}
+
       - name: Log association failure
         if: failure()
         uses: port-labs/port-github-action@v1
