@@ -5,4 +5,4 @@ environment: dev
 product_name: Test Product
 product_identifier: TESTPR
 port_run_id: r_dQHixyUuTPREDT5C
-status: succeeded
+status: failed
