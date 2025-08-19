@@ -60,7 +60,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Preparing ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Azure Login
         uses: azure/login@v2
@@ -219,7 +219,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting plan stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 
@@ -325,14 +325,14 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting apply stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Verify environment file
         run: test -f "$TF_VAR_environment_file"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: tfplan
           path: terraform
@@ -490,7 +490,7 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 

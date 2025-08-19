@@ -48,7 +48,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Associating service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }} using repo ${{ inputs.github_repo }}'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Load environment context
         run: |
