@@ -43,12 +43,19 @@ resource "port_entity" "resource_group" {
   title      = module.environment.resource_group_name
 
   properties = {
-    location = module.environment.resource_group_location
-    tags     = module.environment.resource_group_tags
+    string_props = {
+      location = module.environment.resource_group_location
+    }
+
+    object_props = {
+      tags = jsonencode(module.environment.resource_group_tags)
+    }
   }
 
   relations = {
-    subscription = lower(data.azurerm_subscription.current.id)
+    single_relations = {
+      subscription = lower(data.azurerm_subscription.current.id)
+    }
   }
 
   run_id = var.port_run_id
@@ -60,16 +67,24 @@ resource "port_entity" "storage_account" {
   title      = module.environment.storage_account_name
 
   properties = {
-    location                 = module.environment.storage_account_location
-    isHnsEnabled             = module.environment.storage_account_is_hns_enabled
-    primaryLocation          = module.environment.storage_account_primary_location
-    secondaryLocation        = module.environment.storage_account_secondary_location
-    allowBlobPublicAccess    = module.environment.storage_account_allow_blob_public_access
-    tags                     = module.environment.storage_account_tags
+    string_props = {
+      isHnsEnabled          = module.environment.storage_account_is_hns_enabled
+      primaryLocation       = module.environment.storage_account_primary_location
+      secondaryLocation     = module.environment.storage_account_secondary_location
+      allowBlobPublicAccess = module.environment.storage_account_allow_blob_public_access
+      location              = module.environment.storage_account_location
+    }
+
+    object_props = {
+      tags = jsonencode(module.environment.resource_group_tags)
+    }
+
   }
 
   relations = {
-    resourceGroup = module.environment.resource_group_id
+    single_relations = {
+      resourceGroup = module.environment.resource_group_id
+    }
   }
 
   run_id = var.port_run_id
@@ -80,10 +95,12 @@ resource "port_entity" "state_container" {
   identifier = module.environment.state_file_container
   title      = module.environment.state_container_name
 
-  properties = { }
+  properties = {}
 
   relations = {
-    azureStorageAccount = module.environment.storage_account_id
+    single_relations = {
+      storageAccount = module.environment.storage_account_id
+    }
   }
 
   run_id = var.port_run_id
@@ -95,12 +112,20 @@ resource "port_entity" "user_managed_identity" {
   title      = module.environment.user_managed_identity_name
 
   properties = {
-    clientId  = module.environment.user_managed_identity_client_id
-    tags      = module.environment.user_managed_identity_tags
+    string_props = {
+      clientId = module.environment.user_managed_identity_client_id
+    }
+
+    object_props = {
+      tags = jsonencode(module.environment.resource_group_tags)
+    }
+
   }
 
   relations = {
-    resource_group = module.environment.resource_group_id
+    single_relations = {
+      resource_group = module.environment.resource_group_id
+    }
   }
 
   run_id = var.port_run_id
