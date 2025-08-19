@@ -87,7 +87,6 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          status: FAILURE
           logMessage: 'Product environment file already exists'
 
       - name: Stop if environment file exists
@@ -184,7 +183,6 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          status: FAILURE
           logMessage: 'Preparation stage failed for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
 
   plan:
@@ -290,7 +288,6 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          status: FAILURE
           logMessage: "Plan stage failed: ${{ steps.plan.outputs.log }}"
 
   apply:
@@ -453,7 +450,6 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          status: FAILURE
           logMessage: "Apply stage failed: ${{ steps.apply.outputs.log }}"
 
   finalize:
@@ -549,5 +545,4 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          status: FAILURE
           logMessage: "Finalize stage failed"
