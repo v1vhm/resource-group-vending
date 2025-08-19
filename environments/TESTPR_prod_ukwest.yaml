@@ -1,4 +1,4 @@
-environment_identifier: test_product_prod_ukwest
+environment_identifier: testpr_prod_ukwest
 environment_title: Test Product prod
 location: ukwest
 environment: prod
