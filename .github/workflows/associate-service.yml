@@ -43,7 +43,7 @@ jobs:
       environment_file: ${{ steps.env.outputs.environment_file }}
     steps:
       - name: Log start
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -132,7 +132,7 @@ jobs:
 
       - name: Log summary
         if: success()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -143,7 +143,7 @@ jobs:
 
       - name: Log failure
         if: failure()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -175,7 +175,7 @@ jobs:
       apply_log: ${{ steps.apply.outputs.log }}
     steps:
       - name: Log start
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -248,7 +248,7 @@ jobs:
 
       - name: Log summary
         if: success()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -259,7 +259,7 @@ jobs:
 
       - name: Log failure
         if: failure()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -286,7 +286,7 @@ jobs:
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
     steps:
       - name: Log start
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -323,7 +323,7 @@ jobs:
 
       - name: Log summary
         if: success()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -334,7 +334,7 @@ jobs:
 
       - name: Log failure
         if: failure()
-        uses: port-labs/port-github-action@v2
+        uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
