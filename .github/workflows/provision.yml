@@ -1,3 +1,5 @@
+# yamllint disable rule:line-length rule:truthy
+---
 name: Provision Environment
 
 on:
@@ -72,10 +74,11 @@ jobs:
       - name: Check for existing environment file
         id: check_env
         run: |
-          if [ -f environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          FILE_NAME=$(echo "${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]')
+          if [ -f "environments/${FILE_NAME}.yaml" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log existing environment file
@@ -95,7 +98,7 @@ jobs:
 
       - name: Derive environment identifiers
         run: |
-          ENVIRONMENT_IDENTIFIER=$(echo "${{ inputs.product_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+          ENVIRONMENT_IDENTIFIER=$(echo "${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
           ENVIRONMENT_TITLE="${{ inputs.product_name }} ${{ inputs.environment }}"
           echo "ENVIRONMENT_IDENTIFIER=$ENVIRONMENT_IDENTIFIER" >> $GITHUB_ENV
           echo "ENVIRONMENT_TITLE=$ENVIRONMENT_TITLE" >> $GITHUB_ENV
@@ -104,7 +107,8 @@ jobs:
         id: create_env_file
         run: |
           mkdir -p environments
-          FILE_PATH=environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+          FILE_NAME=$(echo "${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}" | tr '[:upper:]' '[:lower:]')
+          FILE_PATH="environments/${FILE_NAME}.yaml"
           cat <<EOF > $FILE_PATH
           environment_identifier: $ENVIRONMENT_IDENTIFIER
           environment_title: $ENVIRONMENT_TITLE
@@ -127,7 +131,8 @@ jobs:
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add ${{ steps.create_env_file.outputs.path }}
-          git commit -m "Add environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}"
+          FILE_BASENAME=$(basename "${{ steps.create_env_file.outputs.path }}" .yaml)
+          git commit -m "Add environment $FILE_BASENAME"
           git push origin HEAD:main
 
       - name: Compute container name
@@ -423,7 +428,8 @@ jobs:
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add $TF_VAR_environment_file
-          git commit -m "Update environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} with outputs"
+          FILE_BASENAME=$(basename "$TF_VAR_environment_file" .yaml)
+          git commit -m "Update environment $FILE_BASENAME with outputs"
           git push origin HEAD:main
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
@@ -453,7 +459,7 @@ jobs:
           logMessage: "Apply stage failed: ${{ steps.apply.outputs.log }}"
 
   finalize:
-    needs: apply
+    needs: [apply, prepare]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -463,7 +469,7 @@ jobs:
       PORT_RUN_ID: ${{ fromJson(inputs.port_context).runId }}
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-      ENV_FILE: environments/${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }}.yaml
+      ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -516,7 +522,8 @@ jobs:
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add "$ENV_FILE"
-          git commit -m "Update environment ${{ inputs.product_short_name }}_${{ inputs.environment }}_${{ inputs.location }} status"
+          FILE_BASENAME=$(basename "$ENV_FILE" .yaml)
+          git commit -m "Update environment $FILE_BASENAME status"
           git push origin HEAD:main
 
       - id: get_sha

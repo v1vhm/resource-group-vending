@@ -5,7 +5,7 @@ Environments are provisioned through a GitHub Actions workflow triggered by Port
 
 ## Environment YAML schema
 ```yaml
-environment_identifier: demo_product_dev_eastus
+environment_identifier: prod-12345_dev_eastus
 environment_title: Demo Product dev
 location: eastus
 environment: dev               # dev | test | prod | acct
@@ -52,13 +52,13 @@ does not interact with Port.
 All Azure resource IDs referenced in environment files or Port relations must be lowercase. Storage account names use the pattern `v1vhm<product_identifier><environment><location>` to ensure global uniqueness.
 
 ## Provisioning an environment
-Port invokes the **Provision Environment** workflow with environment details. The workflow writes the environment file and commits it immediately so that subsequent jobs read the committed file rather than workflow artifacts. On success, the workflow provisions the resources and updates the same file with outputs and a final status.
+Port invokes the **Provision Environment** workflow with environment details. The workflow writes the environment file and commits it immediately so that subsequent jobs read the committed file rather than workflow artifacts. The file is named `<product_short_name>_<environment>_<location>.yaml` in lowercase. On success, the workflow provisions the resources and updates the same file with outputs and a final status.
 
 ## Associating a service
 
 Run the **Associate Service** workflow to link a service to an environment. It requires the following inputs:
 
-- `environment_identifier` – `<product_name>_<environment>_<location>` in lower case with spaces replaced by underscores
+- `environment_identifier` – `<product_identifier>_<environment>_<location>` in lower case with spaces replaced by underscores
 - `service_identifier` – unique service id
 - `github_repo` – repository in `org/repo` format
 - `port_run_id` – Port action run id for this association

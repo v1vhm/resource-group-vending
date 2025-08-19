@@ -14,9 +14,10 @@ if [[ -z "$PRODUCT_NAME" || -z "$PRODUCT_SHORT_NAME" || -z "$LOCATION" || -z "$E
 fi
 
 # Derived variables
-ENVIRONMENT_IDENTIFIER="$(echo "${PRODUCT_NAME}_${ENVIRONMENT}_${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')"
+FILE_STEM="$(echo "${PRODUCT_SHORT_NAME}_${ENVIRONMENT}_${LOCATION}" | tr '[:upper:]' '[:lower:]')"
+ENVIRONMENT_IDENTIFIER="$(echo "${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')"
 ENVIRONMENT_TITLE="${PRODUCT_NAME} ${ENVIRONMENT}"
-ENV_FILE="environments/${PRODUCT_SHORT_NAME}_${ENVIRONMENT}_${LOCATION}.yaml"
+ENV_FILE="environments/${FILE_STEM}.yaml"
 CONTAINER_NAME="$(echo "${PRODUCT_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')"
 STATE_FILE_KEY="${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate"
 
