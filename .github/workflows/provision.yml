@@ -48,8 +48,12 @@ jobs:
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
     outputs:
-      environment_file: ${{ steps.create_env_file.outputs.path }}
-      container_name: ${{ steps.compute_container.outputs.name }}
+      product_identifier: ${{ steps.set_outputs.outputs.product_identifier }}
+      environment: ${{ steps.set_outputs.outputs.environment }}
+      location: ${{ steps.set_outputs.outputs.location }}
+      env_short_name: ${{ steps.set_outputs.outputs.env_short_name }}
+      container_name: ${{ steps.set_outputs.outputs.container_name }}
+      environment_file: ${{ steps.set_outputs.outputs.environment_file }}
       state_file_container_id: ${{ steps.compute_state_container_id.outputs.id }}
     steps:
       - name: Start run
@@ -155,6 +159,15 @@ jobs:
           STATE_FILE_CONTAINER_ID=$(echo "vendingtfstate-${CONTAINER_NAME}" | tr '[:upper:]' '[:lower:]')
           echo "STATE_FILE_CONTAINER_ID=$STATE_FILE_CONTAINER_ID" >> $GITHUB_ENV
           echo "id=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          echo "product_identifier=${{ inputs.product_identifier }}" >> "$GITHUB_OUTPUT"
+          echo "environment=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          echo "location=${{ inputs.location }}" >> "$GITHUB_OUTPUT"
+          echo "env_short_name=${{ inputs.product_short_name }}" >> "$GITHUB_OUTPUT"
+          echo "container_name=${{ steps.compute_container.outputs.name }}" >> "$GITHUB_OUTPUT"
+          echo "environment_file=${{ steps.create_env_file.outputs.path }}" >> "$GITHUB_OUTPUT"
       - name: Upsert state container
         uses: port-labs/port-github-action@v1
         with:
@@ -208,6 +221,10 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+      PRODUCT_IDENTIFIER: ${{ needs.prepare.outputs.product_identifier }}
+      ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+      LOCATION: ${{ needs.prepare.outputs.location }}
+      ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
     outputs:
       plan_path: ${{ steps.plan.outputs.path }}
       plan_summary: ${{ steps.summarize.outputs.summary }}
@@ -220,7 +237,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting plan stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
+          logMessage: 'Starting plan stage for ${{ inputs.product_name }} in ${{ env.LOCATION }} (${{ env.ENVIRONMENT }})'
 
       - uses: actions/checkout@v5
         with:
@@ -248,7 +265,7 @@ jobs:
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
             -backend-config="container_name=${CONTAINER_NAME}" \
-            -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
+            -backend-config="key=${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate" \
             -reconfigure
 
       # Set TF_LOG_LEVEL (e.g., TRACE) to capture detailed Terraform logs
@@ -314,6 +331,10 @@ jobs:
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
       STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
+      PRODUCT_IDENTIFIER: ${{ needs.prepare.outputs.product_identifier }}
+      ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+      LOCATION: ${{ needs.prepare.outputs.location }}
+      ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
     outputs:
       commit_sha: ${{ steps.commit.outputs.sha }}
     steps:
@@ -325,7 +346,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Starting apply stage for ${{ inputs.product_name }} in ${{ inputs.location }} (${{ inputs.environment }})'
+          logMessage: 'Starting apply stage for ${{ inputs.product_name }} in ${{ env.LOCATION }} (${{ env.ENVIRONMENT }})'
 
       - uses: actions/checkout@v5
         with:
@@ -368,7 +389,7 @@ jobs:
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
             -backend-config="container_name=${CONTAINER_NAME}" \
-            -backend-config="key=${{ inputs.product_identifier }}_${{ inputs.environment }}_${{ inputs.location }}.tfstate" \
+            -backend-config="key=${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate" \
             -reconfigure
 
       - name: Log start terraform apply
@@ -470,6 +491,11 @@ jobs:
       PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
+      PRODUCT_IDENTIFIER: ${{ needs.prepare.outputs.product_identifier }}
+      ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+      LOCATION: ${{ needs.prepare.outputs.location }}
+      ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
+      CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -498,7 +524,7 @@ jobs:
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: >-
-            Finalizing ${{ env.ENV_FILE }} with env=${{ env.DEPLOYMENT_ENVIRONMENT }},
+            Finalizing ${{ env.ENV_FILE }} for ${{ env.ENV_SHORT_NAME }} in ${{ env.LOCATION }} (${{ env.ENVIRONMENT }}) with env=${{ env.DEPLOYMENT_ENVIRONMENT }},
             identity=${{ env.DEPLOYMENT_IDENTITY }},
             subscription=${{ env.AZURE_SUBSCRIPTION }}
 
