@@ -21,9 +21,14 @@ on:
         description: 'Request identifier that triggered this workflow'
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   associate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: write
@@ -51,7 +56,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Load environment context
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           ENV_FILE=environments/${{ inputs.environment_identifier }}.yaml
           if [ ! -f "$ENV_FILE" ]; then
             echo "Environment file not found" >&2
@@ -67,34 +75,40 @@ jobs:
           echo "ENV_SHORT_NAME=$ENV_SHORT_NAME" >> $GITHUB_ENV
 
       - name: Set storage container name
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           CONTAINER_NAME=$(echo "${ENV_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
           echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
 
       - name: Update services list
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           pip install pyyaml
           cat <<'PY' > update_service.py
-            import yaml, os
-            env_file = os.environ['ENV_FILE']
-            service_id = os.environ['SERVICE_ID']
-            github_repo = os.environ['GITHUB_REPO']
-            port_run_id = os.environ['PORT_RUN_ID']
-            with open(env_file) as f:
-                data = yaml.safe_load(f) or {}
-            services = data.get('services', [])
-            for svc in services:
-                if svc.get('service_identifier') == service_id:
-                    svc['github'] = {'repository': github_repo}
-                    break
-            else:
-                services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
-            data['services'] = services
-            data['port_run_id'] = port_run_id
-            with open(env_file, 'w') as f:
-                yaml.dump(data, f, sort_keys=False)
+          import yaml, os
+          env_file = os.environ['ENV_FILE']
+          service_id = os.environ['SERVICE_ID']
+          github_repo = os.environ['GITHUB_REPO']
+          port_run_id = os.environ['PORT_RUN_ID']
+          with open(env_file) as f:
+              data = yaml.safe_load(f) or {}
+          services = data.get('services', [])
+          for svc in services:
+              if svc.get('service_identifier') == service_id:
+                  svc['github'] = {'repository': github_repo}
+                  break
+          else:
+              services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
+          data['services'] = services
+          data['port_run_id'] = port_run_id
+          with open(env_file, 'w') as f:
+              yaml.dump(data, f, sort_keys=False)
           PY
-          sed -i 's/^ *//' update_service.py
+          sed -i 's/^          //' update_service.py
           python update_service.py
         env:
           ENV_FILE: ${{ github.workspace }}/environments/${{ inputs.environment_identifier }}.yaml
@@ -102,7 +116,10 @@ jobs:
           GITHUB_REPO: ${{ inputs.github_repo }}
 
       - name: Commit updated environment file
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
           git config user.name "getport-io[bot]"
           git add environments/${{ inputs.environment_identifier }}.yaml
@@ -120,7 +137,10 @@ jobs:
           subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
 
       - name: Terraform Init
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
@@ -130,7 +150,10 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           set +e
           terraform -chdir=terraform plan -no-color 2>&1 | tee plan.log
           status=$?
@@ -141,7 +164,10 @@ jobs:
 
       - name: Terraform Apply (update Port relations)
         id: apply
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           set +e
           terraform -chdir=terraform apply -auto-approve -no-color 2>&1 | tee apply.log
           status=$?
