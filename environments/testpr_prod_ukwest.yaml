@@ -13,4 +13,4 @@ state_file_container: v1vhmtestprprodukwest-tfstate
 services:
   - service_identifier: testpr-infra21
     github:
-      repository: repo-owner/testpr-infra21
+      repository: v1vhm/testpr-infra21
