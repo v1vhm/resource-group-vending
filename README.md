@@ -18,7 +18,7 @@ deployment_environment: /subscriptions/.../resourceGroups/rg-prod-12345-dev-east
 deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/uai-prod-12345-dev-eastus
 azure_subscription: /subscriptions/...      # subscription id
 ```
-```
+
 The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
