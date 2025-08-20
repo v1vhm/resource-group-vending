@@ -308,6 +308,29 @@ jobs:
           properties: >-
             {"status": "Configuring Service"}
 
+      - name: Compute state container identifier
+        if: ${{ needs.terraform.result == 'success' }}
+        id: state_container
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          STATE_CONTAINER=$(grep '^state_file_container:' "$ENV_FILE" | awk '{print $2}')
+          echo "id=$STATE_CONTAINER" >> "$GITHUB_OUTPUT"
+
+      - name: Link request to state container
+        if: ${{ needs.terraform.result == 'success' }}
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: UPSERT
+          blueprint: link_environment_request
+          identifier: ${{ inputs.request_identifier }}
+          relations: >-
+            {"storage_account_identifier": "${{ steps.state_container.outputs.id }}"}
+
       - name: Update request failure status
         if: ${{ needs.terraform.result != 'success' }}
         uses: port-labs/port-github-action@v1
