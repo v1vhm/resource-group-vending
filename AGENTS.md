@@ -50,14 +50,14 @@ Workflow steps that depend on previous steps should explicitly set `if: success(
 * **Variables and modules:** When adding new fields to the environment YAML schema (e.g., a new tag or property), declare a corresponding variable in `terraform/modules/resource_group/variables.tf` and propagate it through `terraform/main.tf` into the module and resources.  Be consistent: if a variable is optional, give it a default value or use `try()` in the module to avoid errors.
 * **Resource naming:** Azure resources have naming rules (storage accounts require globally unique names, 3–24 lowercase alphanumeric characters; resource groups can include alphanumerics, hyphens and underscores).  Resource groups follow the `rg-${var.product_identifier}-${var.environment}-${var.location}` pattern, while storage accounts use `v1vhm${var.product_identifier}${var.environment}${var.location}`.  If you change the naming pattern, ensure it remains valid and update all dependent resources and outputs.
 * **Outputs:** The resource group module exposes detailed attributes for the
-  resource group, storage account, state container and user‑managed identity.
+  resource group, storage account, service containers and user‑managed identity.
   The root configuration consumes these outputs to register Port entities and
   exposes high‑level values (`deployment_environment`, `deployment_identity`,
-  `azure_subscription`, `state_file_container` and
-  `user_managed_identity_client_id`) so the workflow can record them in the
-  environment file.  When adding new outputs, update the workflow step that
-  appends these values (the step uses `jq` to extract them from `terraform
-  output`).  Maintain JSON parsing rather than relying on string matching.
+  `azure_subscription` and `user_managed_identity_client_id`) so the workflow
+  can record them in the environment file.  When adding new outputs, update the
+  workflow step that appends these values (the step uses `jq` to extract them
+  from `terraform output`).  Maintain JSON parsing rather than relying on string
+  matching.
 * **Port integration:** Use the `port_labs` provider in the root configuration
   to register additional entities or relations.  Keep identifiers stable and
   avoid changing blueprint names.  The resource group module does not create
@@ -68,7 +68,7 @@ Workflow steps that depend on previous steps should explicitly set `if: success(
 To add a new environment (for example, a new microservice or a new tier for an existing service):
 
 1. Run the **Provision Environment** workflow manually via the GitHub Actions UI or allow Port to trigger it.  Provide appropriate values for all inputs.  The workflow will create a YAML file under `environments/`, create the state container, run Terraform and commit the YAML file and its updates.
-2. After the workflow completes, verify that the new YAML file exists under `environments/` and that the `deployment_environment`, `deployment_identity`, `azure_subscription` and `state_file_container` entries were appended.
+2. After the workflow completes, verify that the new YAML file exists under `environments/` and that the `deployment_environment`, `deployment_identity` and `azure_subscription` entries were appended.
 3. If services need to be associated, run the dedicated service‑association workflow to populate the `services` list.
 4. Inspect the Azure portal to confirm that the resource group, storage account and user‑managed identity have been created with the expected names.  Ensure tags reflect the environment metadata.
 5. Consider adding unit tests or integration tests (e.g., using `terraform validate` or `terraform plan` in CI) to prevent regressions.

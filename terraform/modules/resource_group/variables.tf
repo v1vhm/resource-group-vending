@@ -6,10 +6,7 @@ variable "services" {
   type = list(object({
     service_identifier = string
     github = object({
-      org         = string
-      repo        = string
-      entity      = string
-      entity_name = string
+      repository = string
     })
   }))
   default = []
