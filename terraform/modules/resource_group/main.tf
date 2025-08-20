@@ -28,8 +28,9 @@ resource "azurerm_storage_account" "sa" {
   tags                     = azurerm_resource_group.rg.tags
 }
 
-resource "azurerm_storage_container" "tfstate" {
-  name                 = "tfstate"
+resource "azurerm_storage_container" "service" {
+  for_each             = { for s in var.services : s.service_identifier => s }
+  name                 = each.key
   storage_account_name = azurerm_storage_account.sa.name
 }
 
@@ -51,13 +52,13 @@ resource "azurerm_role_assignment" "storage_blob_data_contributor" {
   principal_id         = azurerm_user_assigned_identity.uai.principal_id
 }
 
-resource "azurerm_federated_identity_credential" "github" {
+resource "azurerm_federated_identity_credential" "service" {
   for_each            = { for s in var.services : s.service_identifier => s }
   name                = "fic-${var.product_identifier}-${var.environment}-${each.key}"
   resource_group_name = azurerm_resource_group.rg.name
   parent_id           = azurerm_user_assigned_identity.uai.id
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${each.value.github.org}/${each.value.github.repo}:${each.value.github.entity}:${each.value.github.entity_name}"
+  subject             = "repo:${each.value.github.repository}:environment:${var.environment}"
   audience            = ["api://AzureADTokenExchange"]
 }
 
@@ -109,12 +110,8 @@ output "storage_account_tags" {
   value = azurerm_storage_account.sa.tags
 }
 
-output "state_container_name" {
-  value = azurerm_storage_container.tfstate.name
-}
-
-output "state_file_container" {
-  value = lower("${azurerm_storage_account.sa.name}-tfstate")
+output "service_containers" {
+  value = { for k, v in azurerm_storage_container.service : k => { id = lower(v.id), name = v.name } }
 }
 
 output "user_managed_identity_id" {

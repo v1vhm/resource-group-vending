@@ -90,12 +90,21 @@ resource "port_entity" "storage_account" {
   run_id = var.port_run_id
 }
 
-resource "port_entity" "state_container" {
+resource "port_entity" "service_container" {
+  for_each   = module.environment.service_containers
   blueprint  = "azureStorageContainer"
-  identifier = module.environment.state_file_container
-  title      = module.environment.state_container_name
+  identifier = each.value.id
+  title      = each.value.name
 
-  properties = {}
+  properties = {
+    string_props = {
+      location = module.environment.storage_account_location
+    }
+
+    object_props = {
+      tags = jsonencode(module.environment.resource_group_tags)
+    }
+  }
 
   relations = {
     single_relations = {
@@ -141,10 +150,6 @@ output "deployment_identity" {
 
 output "azure_subscription" {
   value = lower(data.azurerm_subscription.current.id)
-}
-
-output "state_file_container" {
-  value = port_entity.state_container.identifier
 }
 
 output "user_managed_identity_client_id" {
