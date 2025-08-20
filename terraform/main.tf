@@ -96,16 +96,6 @@ resource "port_entity" "service_container" {
   identifier = each.value.id
   title      = each.value.name
 
-  properties = {
-    string_props = {
-      location = module.environment.storage_account_location
-    }
-
-    object_props = {
-      tags = jsonencode(module.environment.resource_group_tags)
-    }
-  }
-
   relations = {
     single_relations = {
       storageAccount = module.environment.storage_account_id
