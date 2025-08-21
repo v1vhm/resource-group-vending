@@ -333,14 +333,27 @@ jobs:
         if: ${{ needs.terraform.result == 'success' }}
         run: sudo snap install yq --classic
 
-      - name: Compute state container identifier
+      - name: Verify service state containers
+        if: ${{ needs.terraform.result == 'success' }}
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          if yq e '.services | length > 0' "$ENV_FILE" >/dev/null; then
+            MISSING=$(yq e '.services[] | select(.deployment_state_container == null or .deployment_state_container == "") | length' "$ENV_FILE")
+            if [ "$MISSING" != "0" ]; then
+              echo "::error::missing deployment_state_container for service" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Load service deployment container
         if: ${{ needs.terraform.result == 'success' }}
         id: state_container
         shell: bash
         run: |
           set -euo pipefail
           IFS=$'\n\t'
-          STATE_CONTAINER=$(yq e ".services[] | select(.service_identifier == \"$SERVICE_IDENTIFIER\") | .deployment_state_container" "$ENV_FILE")
+          STATE_CONTAINER=$(yq -r ".services[] | select(.service_identifier == \"$SERVICE_IDENTIFIER\") | .deployment_state_container" "$ENV_FILE")
           echo "id=$STATE_CONTAINER" >> "$GITHUB_OUTPUT"
 
       - name: Link request to state container

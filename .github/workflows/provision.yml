@@ -50,7 +50,7 @@ jobs:
     outputs:
       environment_file: ${{ steps.create_env_file.outputs.path }}
       env_state_container: ${{ steps.compute_env_state_container.outputs.name }}
-      state_file_container_id: ${{ steps.compute_state_container_id.outputs.id }}
+      vending_state_container_id: ${{ steps.compute_vending_state_container_id.outputs.id }}
     steps:
       - name: Start run
         uses: port-labs/port-github-action@v1
@@ -151,11 +151,12 @@ jobs:
             --resource-group v1vhm-rg-vending-prod-uks-001 \
             --auth-mode login
       - name: Compute state container id
-        id: compute_state_container_id
+        id: compute_vending_state_container_id
         run: |
-          STATE_FILE_CONTAINER_ID=$(echo "vendingtfstate-${ENV_STATE_CONTAINER}" | tr '[:upper:]' '[:lower:]')
-          echo "STATE_FILE_CONTAINER_ID=$STATE_FILE_CONTAINER_ID" >> $GITHUB_ENV
-          echo "id=$STATE_FILE_CONTAINER_ID" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          VENDING_STATE_CONTAINER_ID=$(echo "vendingtfstate-${ENV_STATE_CONTAINER}" | tr '[:upper:]' '[:lower:]')
+          echo "VENDING_STATE_CONTAINER_ID=$VENDING_STATE_CONTAINER_ID" >> $GITHUB_ENV
+          echo "id=$VENDING_STATE_CONTAINER_ID" >> $GITHUB_OUTPUT
       - name: Upsert state container
         uses: port-labs/port-github-action@v1
         with:
@@ -164,7 +165,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: UPSERT
           blueprint: azureStorageContainer
-          identifier: ${{ env.STATE_FILE_CONTAINER_ID }}
+          identifier: ${{ env.VENDING_STATE_CONTAINER_ID }}
           title: ${{ env.ENV_STATE_CONTAINER }}
           relations: >-
             {"storageAccount": "/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourcegroups/v1vhm-rg-vending-prod-uks-001/providers/microsoft.storage/storageaccounts/vendingtfstate"}
@@ -314,7 +315,7 @@ jobs:
       PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
       TF_VAR_environment_file: ${{ github.workspace }}/${{ needs.prepare.outputs.environment_file }}
       ENV_STATE_CONTAINER: ${{ needs.prepare.outputs.env_state_container }}
-      STATE_FILE_CONTAINER_ID: ${{ needs.prepare.outputs.state_file_container_id }}
+      VENDING_STATE_CONTAINER_ID: ${{ needs.prepare.outputs.vending_state_container_id }}
     outputs:
       commit_sha: ${{ steps.commit.outputs.sha }}
     steps:
@@ -398,6 +399,9 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: ${{ steps.apply.outputs.log }}
 
+      - name: Install yq
+        run: sudo snap install yq --classic
+
       - name: Capture outputs
         run: |
           set -euo pipefail
@@ -408,16 +412,15 @@ jobs:
             varname=$(echo "$key" | tr '[:lower:]' '[:upper:]')
             echo "${varname}=$value" >> "$GITHUB_ENV"
           done
-          DEPLOYMENT_STATE_CONTAINERS=$(jq -c '.deployment_state_containers.value' tfoutput.json)
-          echo "DEPLOYMENT_STATE_CONTAINERS=$DEPLOYMENT_STATE_CONTAINERS" >> "$GITHUB_ENV"
+          jq -r '.deployment_state_containers.value | to_entries[] | "\(.key)=\(.value.id)"' tfoutput.json | \
+          while IFS='=' read -r svc id; do
+            yq e -i "(.services[] | select(.service_identifier == \"$svc\") | .deployment_state_container) = \"$id\"" "$TF_VAR_environment_file"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
           name: tfoutput
           path: tfoutput.json
-
-      - name: Install yq
-        run: sudo snap install yq --classic
 
       - name: Append outputs to environment file
         run: |
@@ -429,9 +432,6 @@ jobs:
             echo "azure_subscription: $AZURE_SUBSCRIPTION"
           } >> "$TF_VAR_environment_file"
           yq e -i ".vending_state_container = \"$ENV_STATE_CONTAINER\"" "$TF_VAR_environment_file"
-          echo "$DEPLOYMENT_STATE_CONTAINERS" | jq -r 'to_entries[] | "\(.key)=\(.value.id)"' | while IFS='=' read -r svc id; do
-            yq e -i "(.services[] | select(.service_identifier == \"$svc\") | .deployment_state_container) = \"$id\"" "$TF_VAR_environment_file"
-          done
 
       - name: Commit updated environment file
         id: commit
