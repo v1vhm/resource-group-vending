@@ -18,11 +18,11 @@ FILE_STEM="$(echo "${PRODUCT_SHORT_NAME}_${ENVIRONMENT}_${LOCATION}" | tr '[:upp
 ENVIRONMENT_IDENTIFIER="$(echo "${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')"
 ENVIRONMENT_TITLE="${PRODUCT_NAME} ${ENVIRONMENT}"
 ENV_FILE="environments/${FILE_STEM}.yaml"
-CONTAINER_NAME="$(echo "${PRODUCT_SHORT_NAME}${ENVIRONMENT}${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')"
+ENV_STATE_CONTAINER="$(echo "envstate-${PRODUCT_SHORT_NAME}-${ENVIRONMENT}-${LOCATION}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')"
 STATE_FILE_KEY="${PRODUCT_IDENTIFIER}_${ENVIRONMENT}_${LOCATION}.tfstate"
 
 export TF_VAR_environment_file="$PWD/$ENV_FILE"
-export CONTAINER_NAME="$CONTAINER_NAME"
+export ENV_STATE_CONTAINER
 export TF_VAR_port_run_id=""
 export ARM_SUBSCRIPTION_ID="da7f852b-9a37-4283-a8c0-de1dafd6cb1f"
 
@@ -31,7 +31,7 @@ echo "==> Running terraform init"
 terraform -chdir=terraform init \
   -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
   -backend-config="storage_account_name=vendingtfstate" \
-  -backend-config="container_name=${CONTAINER_NAME}" \
+  -backend-config="container_name=${ENV_STATE_CONTAINER}" \
   -backend-config="key=${STATE_FILE_KEY}" \
   -reconfigure | tee terraform-init.log
 

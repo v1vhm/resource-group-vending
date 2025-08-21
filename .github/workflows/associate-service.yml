@@ -39,7 +39,7 @@ jobs:
       environment: ${{ steps.env.outputs.environment }}
       location: ${{ steps.env.outputs.location }}
       env_short_name: ${{ steps.env.outputs.env_short_name }}
-      container_name: ${{ steps.container.outputs.container_name }}
+      env_state_container: ${{ steps.compute_env_state_container.outputs.env_state_container }}
       environment_file: ${{ steps.env.outputs.environment_file }}
     steps:
       - name: Log start
@@ -77,14 +77,14 @@ jobs:
             echo "environment_file=$ENV_FILE"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set storage container name
-        id: container
+      - name: Compute state container name
+        id: compute_env_state_container
         shell: bash
         run: |
           set -euo pipefail
           IFS=$'\n\t'
-          CONTAINER_NAME=$(echo "${{ steps.env.outputs.env_short_name }}${{ steps.env.outputs.environment }}${{ steps.env.outputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
-          echo "container_name=$CONTAINER_NAME" >> "$GITHUB_OUTPUT"
+          ENV_STATE_CONTAINER=$(echo "envstate-${{ steps.env.outputs.env_short_name }}-${{ steps.env.outputs.environment }}-${{ steps.env.outputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
+          echo "env_state_container=$ENV_STATE_CONTAINER" >> "$GITHUB_OUTPUT"
 
       - name: Log summary
         if: success()
@@ -197,7 +197,7 @@ jobs:
           terraform -chdir=terraform init \
             -backend-config="resource_group_name=v1vhm-rg-vending-prod-uks-001" \
             -backend-config="storage_account_name=vendingtfstate" \
-            -backend-config="container_name=${{ needs.prepare.outputs.container_name }}" \
+            -backend-config="container_name=${{ needs.prepare.outputs.env_state_container }}" \
             -backend-config="key=${{ needs.prepare.outputs.product_identifier }}_${{ needs.prepare.outputs.environment }}_${{ needs.prepare.outputs.location }}.tfstate" \
             -reconfigure
 
@@ -287,7 +287,7 @@ jobs:
       ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
       LOCATION: ${{ needs.prepare.outputs.location }}
       ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
-      CONTAINER_NAME: ${{ needs.prepare.outputs.container_name }}
+      ENV_STATE_CONTAINER: ${{ needs.prepare.outputs.env_state_container }}
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
     steps:
       - name: Log start
