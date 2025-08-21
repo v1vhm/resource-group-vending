@@ -28,7 +28,7 @@ resource "azurerm_storage_account" "sa" {
   tags                     = azurerm_resource_group.rg.tags
 }
 
-resource "azurerm_storage_container" "service" {
+resource "azurerm_storage_container" "deployment_state" {
   for_each             = { for s in var.services : s.service_identifier => s }
   name                 = each.key
   storage_account_name = azurerm_storage_account.sa.name
@@ -110,8 +110,8 @@ output "storage_account_tags" {
   value = azurerm_storage_account.sa.tags
 }
 
-output "service_containers" {
-  value = { for k, v in azurerm_storage_container.service : k => { id = lower(v.id), name = v.name } }
+output "deployment_state_containers" {
+  value = { for k, v in azurerm_storage_container.deployment_state : k => { id = lower(v.id), name = v.name } }
 }
 
 output "user_managed_identity_id" {
