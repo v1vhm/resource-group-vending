@@ -160,9 +160,10 @@ jobs:
           for svc in services:
               if svc.get('service_identifier') == service_id:
                   svc['github'] = {'repository': github_repo}
+                  svc.setdefault('deployment_state_container', None)
                   break
           else:
-              services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
+              services.append({'service_identifier': service_id, 'deployment_state_container': None, 'github': {'repository': github_repo}})
           data['services'] = services
           data['port_run_id'] = port_run_id
           with open(env_file, 'w') as f:
@@ -229,6 +230,20 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           exit $status
 
+      - name: Install yq
+        if: success()
+        run: sudo snap install yq --classic
+
+      - name: Record deployment state container
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          terraform -chdir=terraform output -json > tfoutput.json
+          ID=$(jq -r ".service_containers.value.\"${{ inputs.service_identifier }}\".id" tfoutput.json)
+          yq e -i "(.services[] | select(.service_identifier == \"${{ inputs.service_identifier }}\") | .deployment_state_container) = \"$ID\"" "$TF_VAR_environment_file"
+
       - name: Commit updated environment file
         if: success()
         shell: bash
@@ -289,6 +304,7 @@ jobs:
       ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
       ENV_STATE_CONTAINER: ${{ needs.prepare.outputs.env_state_container }}
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
+      SERVICE_IDENTIFIER: ${{ inputs.service_identifier }}
     steps:
       - name: Log start
         uses: port-labs/port-github-action@v1
@@ -313,6 +329,10 @@ jobs:
           properties: >-
             {"status": "Configuring Service"}
 
+      - name: Install yq
+        if: ${{ needs.terraform.result == 'success' }}
+        run: sudo snap install yq --classic
+
       - name: Compute state container identifier
         if: ${{ needs.terraform.result == 'success' }}
         id: state_container
@@ -320,7 +340,7 @@ jobs:
         run: |
           set -euo pipefail
           IFS=$'\n\t'
-          STATE_CONTAINER=$(grep '^state_file_container:' "$ENV_FILE" | awk '{print $2}')
+          STATE_CONTAINER=$(yq e ".services[] | select(.service_identifier == \"$SERVICE_IDENTIFIER\") | .deployment_state_container" "$ENV_FILE")
           echo "id=$STATE_CONTAINER" >> "$GITHUB_OUTPUT"
 
       - name: Link request to state container

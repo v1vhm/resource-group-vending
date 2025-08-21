@@ -117,6 +117,7 @@ jobs:
           product_name: ${{ inputs.product_name }}
           product_identifier: ${{ inputs.product_identifier }}
           port_run_id: $PORT_RUN_ID
+          vending_state_container:
           EOF
           echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
 
@@ -402,25 +403,35 @@ jobs:
           set -euo pipefail
           IFS=$'\n\t'
           terraform -chdir=terraform output -json > tfoutput.json
-          for key in deployment_environment deployment_identity azure_subscription state_file_container user_managed_identity_client_id; do
+          for key in deployment_environment deployment_identity azure_subscription user_managed_identity_client_id; do
             value=$(jq -r ".${key}.value" tfoutput.json)
             varname=$(echo "$key" | tr '[:lower:]' '[:upper:]')
             echo "${varname}=$value" >> "$GITHUB_ENV"
           done
+          SERVICE_CONTAINERS=$(jq -c '.service_containers.value' tfoutput.json)
+          echo "SERVICE_CONTAINERS=$SERVICE_CONTAINERS" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: tfoutput
           path: tfoutput.json
 
+      - name: Install yq
+        run: sudo snap install yq --classic
+
       - name: Append outputs to environment file
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           {
             echo "deployment_environment: $DEPLOYMENT_ENVIRONMENT"
             echo "deployment_identity: $DEPLOYMENT_IDENTITY"
             echo "azure_subscription: $AZURE_SUBSCRIPTION"
-            echo "state_file_container: $STATE_FILE_CONTAINER"
           } >> "$TF_VAR_environment_file"
+          yq e -i ".vending_state_container = \"$ENV_STATE_CONTAINER\"" "$TF_VAR_environment_file"
+          echo "$SERVICE_CONTAINERS" | jq -r 'to_entries[] | "\(.key)=\(.value.id)"' | while IFS='=' read -r svc id; do
+            yq e -i "(.services[] | select(.service_identifier == \"$svc\") | .deployment_state_container) = \"$id\"" "$TF_VAR_environment_file"
+          done
 
       - name: Commit updated environment file
         id: commit
@@ -475,18 +486,30 @@ jobs:
         with:
           ref: main
 
+      - name: Install yq
+        run: sudo snap install yq --classic
+
       - name: Load deployment metadata
+        shell: bash
         run: |
+          set -euo pipefail
+          IFS=$'\n\t'
           DEPLOYMENT_ENVIRONMENT=$(grep '^deployment_environment:' "$ENV_FILE" | awk '{print $2}')
           DEPLOYMENT_IDENTITY=$(grep '^deployment_identity:' "$ENV_FILE" | awk '{print $2}')
           AZURE_SUBSCRIPTION=$(grep '^azure_subscription:' "$ENV_FILE" | awk '{print $2}')
-          STATE_FILE_CONTAINER=$(grep '^state_file_container:' "$ENV_FILE" | awk '{print $2}')
-          test -n "$DEPLOYMENT_ENVIRONMENT" && test -n "$DEPLOYMENT_IDENTITY" && test -n "$AZURE_SUBSCRIPTION" && test -n "$STATE_FILE_CONTAINER"
+          VENDING_STATE_CONTAINER=$(grep '^vending_state_container:' "$ENV_FILE" | awk '{print $2}')
+          if yq e '.services | length > 0' "$ENV_FILE" >/dev/null; then
+            MISSING=$(yq e '.services[] | select(.deployment_state_container == null or .deployment_state_container == "") | length' "$ENV_FILE")
+            if [ "$MISSING" != "0" ]; then
+              echo "::error::missing deployment_state_container for service" >&2
+              exit 1
+            fi
+          fi
           {
             echo "DEPLOYMENT_ENVIRONMENT=$DEPLOYMENT_ENVIRONMENT"
             echo "DEPLOYMENT_IDENTITY=$DEPLOYMENT_IDENTITY"
             echo "AZURE_SUBSCRIPTION=$AZURE_SUBSCRIPTION"
-            echo "STATE_FILE_CONTAINER=$STATE_FILE_CONTAINER"
+            echo "VENDING_STATE_CONTAINER=$VENDING_STATE_CONTAINER"
           } >> "$GITHUB_ENV"
 
       - name: Log start finalize
@@ -504,9 +527,6 @@ jobs:
 
       - name: Verify environment file
         run: test -f "$ENV_FILE"
-
-      - name: Install yq
-        run: sudo snap install yq --classic
 
       - name: Mark environment as succeeded
         if: ${{ success() }}

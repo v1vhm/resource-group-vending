@@ -9,8 +9,9 @@ status: succeeded
 deployment_environment: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-dev-uksouth
 deployment_identity: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-dev-uksouth/providers/microsoft.managedidentity/userassignedidentities/uai-testpr-dev-uksouth
 azure_subscription: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f
-state_file_container: null
+vending_state_container: null
 services:
 - service_identifier: testpr-infra
+  deployment_state_container: null
   github:
     repository: v1vhm/testpr-infra

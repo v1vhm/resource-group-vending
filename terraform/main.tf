@@ -146,3 +146,7 @@ output "user_managed_identity_client_id" {
   value = module.environment.user_managed_identity_client_id
 }
 
+output "service_containers" {
+  value = module.environment.service_containers
+}
+
