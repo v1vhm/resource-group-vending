@@ -90,8 +90,8 @@ resource "port_entity" "storage_account" {
   run_id = var.port_run_id
 }
 
-resource "port_entity" "service_container" {
-  for_each   = module.environment.service_containers
+resource "port_entity" "deployment_state_container" {
+  for_each   = module.environment.deployment_state_containers
   blueprint  = "azureStorageContainer"
   identifier = each.value.id
   title      = each.value.name
@@ -146,7 +146,7 @@ output "user_managed_identity_client_id" {
   value = module.environment.user_managed_identity_client_id
 }
 
-output "service_containers" {
-  value = module.environment.service_containers
+output "deployment_state_containers" {
+  value = module.environment.deployment_state_containers
 }
 

@@ -408,8 +408,8 @@ jobs:
             varname=$(echo "$key" | tr '[:lower:]' '[:upper:]')
             echo "${varname}=$value" >> "$GITHUB_ENV"
           done
-          SERVICE_CONTAINERS=$(jq -c '.service_containers.value' tfoutput.json)
-          echo "SERVICE_CONTAINERS=$SERVICE_CONTAINERS" >> "$GITHUB_ENV"
+          DEPLOYMENT_STATE_CONTAINERS=$(jq -c '.deployment_state_containers.value' tfoutput.json)
+          echo "DEPLOYMENT_STATE_CONTAINERS=$DEPLOYMENT_STATE_CONTAINERS" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -429,7 +429,7 @@ jobs:
             echo "azure_subscription: $AZURE_SUBSCRIPTION"
           } >> "$TF_VAR_environment_file"
           yq e -i ".vending_state_container = \"$ENV_STATE_CONTAINER\"" "$TF_VAR_environment_file"
-          echo "$SERVICE_CONTAINERS" | jq -r 'to_entries[] | "\(.key)=\(.value.id)"' | while IFS='=' read -r svc id; do
+          echo "$DEPLOYMENT_STATE_CONTAINERS" | jq -r 'to_entries[] | "\(.key)=\(.value.id)"' | while IFS='=' read -r svc id; do
             yq e -i "(.services[] | select(.service_identifier == \"$svc\") | .deployment_state_container) = \"$id\"" "$TF_VAR_environment_file"
           done
 

@@ -241,7 +241,7 @@ jobs:
           set -euo pipefail
           IFS=$'\n\t'
           terraform -chdir=terraform output -json > tfoutput.json
-          ID=$(jq -r ".service_containers.value.\"${{ inputs.service_identifier }}\".id" tfoutput.json)
+          ID=$(jq -r ".deployment_state_containers.value.\"${{ inputs.service_identifier }}\".id" tfoutput.json)
           yq e -i "(.services[] | select(.service_identifier == \"${{ inputs.service_identifier }}\") | .deployment_state_container) = \"$ID\"" "$TF_VAR_environment_file"
 
       - name: Commit updated environment file
