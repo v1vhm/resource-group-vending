@@ -86,50 +86,6 @@ jobs:
           CONTAINER_NAME=$(echo "${{ steps.env.outputs.env_short_name }}${{ steps.env.outputs.environment }}${{ steps.env.outputs.location }}" | tr '[:upper:]' '[:lower:]' | tr ' _' '-')
           echo "container_name=$CONTAINER_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Update services list
-        shell: bash
-        run: |
-          set -euo pipefail
-          IFS=$'\n\t'
-          pip install pyyaml
-          cat <<'PY' > update_service.py
-          import yaml, os
-          env_file = os.environ['ENV_FILE']
-          service_id = os.environ['SERVICE_ID']
-          github_repo = os.environ['GITHUB_REPO']
-          port_run_id = os.environ['PORT_RUN_ID']
-          with open(env_file) as f:
-              data = yaml.safe_load(f) or {}
-          services = data.get('services', [])
-          for svc in services:
-              if svc.get('service_identifier') == service_id:
-                  svc['github'] = {'repository': github_repo}
-                  break
-          else:
-              services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
-          data['services'] = services
-          data['port_run_id'] = port_run_id
-          with open(env_file, 'w') as f:
-              yaml.dump(data, f, sort_keys=False, default_flow_style=False, indent=2)
-          PY
-          sed -i 's/^          //' update_service.py
-          python update_service.py
-        env:
-          ENV_FILE: ${{ steps.env.outputs.environment_file }}
-          SERVICE_ID: ${{ inputs.service_identifier }}
-          GITHUB_REPO: ${{ inputs.github_repo }}
-
-      - name: Commit updated environment file
-        shell: bash
-        run: |
-          set -euo pipefail
-          IFS=$'\n\t'
-          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
-          git config user.name "getport-io[bot]"
-          git add "${{ steps.env.outputs.environment_file }}"
-          git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }}"
-          git push origin HEAD:main
-
       - name: Log summary
         if: success()
         uses: port-labs/port-github-action@v1
@@ -139,7 +95,7 @@ jobs:
           baseUrl: https://api.getport.io
           operation: PATCH_RUN
           runId: ${{ env.PORT_RUN_ID }}
-          logMessage: 'Environment file updated for ${{ inputs.environment_identifier }} with service ${{ inputs.service_identifier }}'
+          logMessage: 'Prepared environment context for ${{ inputs.environment_identifier }}'
 
       - name: Log failure
         if: failure()
@@ -185,6 +141,39 @@ jobs:
           logMessage: 'Starting terraform for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
 
       - uses: actions/checkout@v5
+
+      - name: Update services list
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          pip install pyyaml
+          cat <<'PY' > update_service.py
+          import yaml, os
+          env_file = os.environ['ENV_FILE']
+          service_id = os.environ['SERVICE_ID']
+          github_repo = os.environ['GITHUB_REPO']
+          port_run_id = os.environ['PORT_RUN_ID']
+          with open(env_file) as f:
+              data = yaml.safe_load(f) or {}
+          services = data.get('services', [])
+          for svc in services:
+              if svc.get('service_identifier') == service_id:
+                  svc['github'] = {'repository': github_repo}
+                  break
+          else:
+              services.append({'service_identifier': service_id, 'github': {'repository': github_repo}})
+          data['services'] = services
+          data['port_run_id'] = port_run_id
+          with open(env_file, 'w') as f:
+              yaml.dump(data, f, sort_keys=False, default_flow_style=False, indent=2)
+          PY
+          sed -i 's/^          //' update_service.py
+          python update_service.py
+        env:
+          ENV_FILE: ${{ env.TF_VAR_environment_file }}
+          SERVICE_ID: ${{ inputs.service_identifier }}
+          GITHUB_REPO: ${{ inputs.github_repo }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -239,6 +228,18 @@ jobs:
           cat apply.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           exit $status
+
+      - name: Commit updated environment file
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+          git config user.email "75343302+getport-io[bot]@users.noreply.github.com"
+          git config user.name "getport-io[bot]"
+          git add "${{ env.TF_VAR_environment_file }}"
+          git commit -m "Associate service ${{ inputs.service_identifier }} with ${{ inputs.environment_identifier }}"
+          git push origin HEAD:main
 
       - name: Upload Terraform logs
         if: ${{ always() }}
