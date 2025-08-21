@@ -129,6 +129,7 @@ jobs:
     outputs:
       plan_log: ${{ steps.plan.outputs.log }}
       apply_log: ${{ steps.apply.outputs.log }}
+      state_container_id: ${{ steps.record_state_container.outputs.id }}
     steps:
       - name: Log start
         uses: port-labs/port-github-action@v1
@@ -236,6 +237,7 @@ jobs:
 
       - name: Record deployment state container
         if: success()
+        id: record_state_container
         shell: bash
         run: |
           set -euo pipefail
@@ -243,6 +245,7 @@ jobs:
           terraform -chdir=terraform output -json > tfoutput.json
           ID=$(jq -r ".deployment_state_containers.value.\"${{ inputs.service_identifier }}\".id" tfoutput.json)
           yq e -i "(.services[] | select(.service_identifier == \"${{ inputs.service_identifier }}\") | .deployment_state_container) = \"$ID\"" "$TF_VAR_environment_file"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       - name: Commit updated environment file
         if: success()
@@ -302,9 +305,7 @@ jobs:
       ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
       LOCATION: ${{ needs.prepare.outputs.location }}
       ENV_SHORT_NAME: ${{ needs.prepare.outputs.env_short_name }}
-      ENV_STATE_CONTAINER: ${{ needs.prepare.outputs.env_state_container }}
       ENV_FILE: ${{ needs.prepare.outputs.environment_file }}
-      SERVICE_IDENTIFIER: ${{ inputs.service_identifier }}
     steps:
       - name: Log start
         uses: port-labs/port-github-action@v1
@@ -329,33 +330,6 @@ jobs:
           properties: >-
             {"status": "Configuring Service"}
 
-      - name: Install yq
-        if: ${{ needs.terraform.result == 'success' }}
-        run: sudo snap install yq --classic
-
-      - name: Verify service state containers
-        if: ${{ needs.terraform.result == 'success' }}
-        run: |
-          set -euo pipefail
-          IFS=$'\n\t'
-          if yq e '.services | length > 0' "$ENV_FILE" >/dev/null; then
-            MISSING=$(yq e '.services[] | select(.deployment_state_container == null or .deployment_state_container == "") | length' "$ENV_FILE")
-            if [ "$MISSING" != "0" ]; then
-              echo "::error::missing deployment_state_container for service" >&2
-              exit 1
-            fi
-          fi
-
-      - name: Load service deployment container
-        if: ${{ needs.terraform.result == 'success' }}
-        id: state_container
-        shell: bash
-        run: |
-          set -euo pipefail
-          IFS=$'\n\t'
-          STATE_CONTAINER=$(yq -r ".services[] | select(.service_identifier == \"$SERVICE_IDENTIFIER\") | .deployment_state_container" "$ENV_FILE")
-          echo "id=$STATE_CONTAINER" >> "$GITHUB_OUTPUT"
-
       - name: Link request to state container
         if: ${{ needs.terraform.result == 'success' }}
         uses: port-labs/port-github-action@v1
@@ -367,7 +341,7 @@ jobs:
           blueprint: link_environment_request
           identifier: ${{ inputs.request_identifier }}
           relations: >-
-            {"storage_account_identifier": "${{ steps.state_container.outputs.id }}"}
+            {"storage_account_identifier": "${{ needs.terraform.outputs.state_container_id }}"}
 
       - name: Update request failure status
         if: ${{ needs.terraform.result != 'success' }}
