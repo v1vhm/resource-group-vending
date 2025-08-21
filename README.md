@@ -16,7 +16,7 @@ product_identifier: prod-12345     # product identifier from Port
 vending_state_container: envstate-prod-12345-dev-eastus
 services:
   - service_identifier: my-service
-    deployment_state_container: mystatecontainer
+    deployment_state_container: my-service
     github:
       repository: org/my-service-repo
 deployment_environment: /subscriptions/.../resourceGroups/rg-prod-12345-dev-eastus
@@ -24,7 +24,13 @@ deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/user
 azure_subscription: /subscriptions/...      # subscription id
 ```
 
-The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product. `vending_state_container` stores the provisioning state container used by Terraform. Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform creates a storage container named after each `service_identifier`, records its identifier under `deployment_state_container`, and configures a GitHub OIDC federated credential for that service. The root module upserts a Port `azureStorageContainer` entity for every deployment state container. The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
+The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product.
+
+`vending_state_container` holds the Terraform state for the environment itself. The provisioning workflow creates this container in the shared `vendingtfstate` storage account before Terraform runs, using the name `envstate-<product_short_name>-<environment>-<location>`.
+
+Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform provisions a storage container in the environment's storage account for each `service_identifier`. Each container is named exactly after the `service_identifier`, recorded under `deployment_state_container`, and used by that service's deployments. Terraform also configures a GitHub OIDC federated credential for that service. The root module upserts a Port `azureStorageContainer` entity for every deployment state container.
+
+The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
 
@@ -58,10 +64,10 @@ does not interact with Port.
 
 ## Conventions
 
-All Azure resource IDs referenced in environment files or Port relations must be lowercase. Storage account names use the pattern `v1vhm<product_identifier><environment><location>` to ensure global uniqueness.
+All Azure resource IDs referenced in environment files or Port relations must be lowercase. Storage account names use the pattern `v1vhm<product_identifier><environment><location>` to ensure global uniqueness. Provisioning state containers live in the shared `vendingtfstate` storage account and are named `envstate-<product_short_name>-<environment>-<location>`. Deployment state containers are created in the environment's storage account and use each `service_identifier` as the container name.
 
 ## Provisioning an environment
-Port invokes the **Provision Environment** workflow with environment details. The workflow writes the environment file and commits it immediately so that subsequent jobs read the committed file rather than workflow artifacts. The file is named `<product_short_name>_<environment>_<location>.yaml` in lowercase. On success, the workflow provisions the resources and updates the same file with outputs and a final status.
+Port invokes the **Provision Environment** workflow with environment details. The workflow writes the environment file and commits it immediately so that subsequent jobs read the committed file rather than workflow artifacts. It also creates the provisioning state container (`vending_state_container`) in the shared `vendingtfstate` storage account using the `envstate-<product_short_name>-<environment>-<location>` naming pattern and records it in the file. The file itself is named `<product_short_name>_<environment>_<location>.yaml` in lowercase. On success, the workflow provisions the resources and updates the same file with outputs and a final status.
 
 ## Associating a service
 
@@ -73,7 +79,7 @@ Run the **Associate Service** workflow to link a service to an environment. It r
 - `port_run_id` – Port action run id for this association
 - `request_identifier` – Port request that triggered the workflow
 
-The workflow updates the environment manifest with the service information and replaces the `port_run_id` with the supplied value.
+The workflow updates the environment manifest with the service information and replaces the `port_run_id` with the supplied value. Terraform provisions a deployment state container in the environment's storage account named after `service_identifier` and records its id under `deployment_state_container`.
 After a successful run it also updates the request status to `Configuring Service` in Port.
 
 ## Running locally
