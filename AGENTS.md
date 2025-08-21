@@ -26,11 +26,12 @@ The high‑level layout is:
   ```yaml
   services:
     - service_identifier: my-service
+      deployment_state_container: mystatecontainer
       github:
         repository: org/my-service-repo
   ```
 
-  Terraform creates a storage container named after each `service_identifier` and configures a GitHub OIDC federated credential for that service.  When creating new environment files, adhere to this schema.
+  Terraform creates a storage container named after each `service_identifier`, records its identifier under `deployment_state_container` and configures a GitHub OIDC federated credential for that service.  When creating new environment files, adhere to this schema.
 * **File names:** Environment files are named `${product_short_name}_${environment}_${location}.yaml`.  The workflow uses the short name and environment tier to build this file name and related resource names.  Do not include spaces or uppercase letters in file names.  The workflow also uses `${product_short_name}_${environment}_${location}` for the state container name and YAML file inside the job, so ensure the values are valid for Azure storage container naming (lowercase alphanumeric and hyphens; length ≤ 63 characters).
 * **Terraform state:** A recent change introduced a separate state file per environment (see commit message *"Create a new state file for each environment"*).  If adding new environments or modifying the backend configuration, keep this behaviour by using a unique `key` in `backend.tf` (e.g., `${product_identifier}_${environment}_${location}.tfstate`).  Avoid using a single shared `terraform.tfstate` for all environments.
 * **Port entities:** The Terraform root registers a Port *environment* entity using the `product_identifier`, environment tier and location as the identifier and title.  Do not revert to using the short name here; a recent commit corrected this (see commit *"port objects now use correct identifier"*).  When adding properties or relations to Port entities, ensure that identifiers remain stable (changing them will orphan existing records).  Services relate to this entity through the optional `services` list, and the root upserts an `azureStorageContainer` entity for each service container.

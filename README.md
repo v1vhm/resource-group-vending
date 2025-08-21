@@ -13,8 +13,10 @@ status: in_progress        # then succeeded | failed
 port_run_id: abcde12345       # Port action run id
 product_name: Demo Product
 product_identifier: prod-12345     # product identifier from Port
+vending_state_container: envstate-prod-12345-dev-eastus
 services:
   - service_identifier: my-service
+    deployment_state_container: mystatecontainer
     github:
       repository: org/my-service-repo
 deployment_environment: /subscriptions/.../resourceGroups/rg-prod-12345-dev-eastus
@@ -22,7 +24,7 @@ deployment_identity: /subscriptions/.../providers/Microsoft.ManagedIdentity/user
 azure_subscription: /subscriptions/...      # subscription id
 ```
 
-The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product. Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform creates a storage container named after each `service_identifier` and configures a GitHub OIDC federated credential for that service. The root module upserts a Port `azureStorageContainer` entity for every service container. The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
+The `status` line records the workflow's progress: it starts as `in_progress` and is later set to `succeeded` or `failed`. The `product_name` and `product_identifier` fields record the owning product. `vending_state_container` stores the provisioning state container used by Terraform. Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform creates a storage container named after each `service_identifier`, records its identifier under `deployment_state_container`, and configures a GitHub OIDC federated credential for that service. The root module upserts a Port `azureStorageContainer` entity for every service container. The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
 
 Managed identities and federated credentials are created automatically by Terraform. The identity is granted Owner access to the resource group and Storage Blob Data Contributor access to the storage account. The resource group is tagged with the environment, product identifier and product name, GitHub organization and repository so that ownership is clear.
 
