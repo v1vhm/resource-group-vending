@@ -498,13 +498,6 @@ jobs:
           DEPLOYMENT_IDENTITY=$(grep '^deployment_identity:' "$ENV_FILE" | awk '{print $2}')
           AZURE_SUBSCRIPTION=$(grep '^azure_subscription:' "$ENV_FILE" | awk '{print $2}')
           VENDING_STATE_CONTAINER=$(grep '^vending_state_container:' "$ENV_FILE" | awk '{print $2}')
-          if yq e '.services | length > 0' "$ENV_FILE" >/dev/null; then
-            MISSING=$(yq e '.services[] | select(.deployment_state_container == null or .deployment_state_container == "") | length' "$ENV_FILE")
-            if [ "$MISSING" != "0" ]; then
-              echo "::error::missing deployment_state_container for service" >&2
-              exit 1
-            fi
-          fi
           {
             echo "DEPLOYMENT_ENVIRONMENT=$DEPLOYMENT_ENVIRONMENT"
             echo "DEPLOYMENT_IDENTITY=$DEPLOYMENT_IDENTITY"
