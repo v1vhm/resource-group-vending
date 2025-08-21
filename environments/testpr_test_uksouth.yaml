@@ -5,7 +5,7 @@ environment: test
 product_name: Test Product
 product_identifier: TESTPR
 port_run_id: r_dnbmswDY7oAueQhN
-status: in_progress
+status: succeeded
 deployment_environment: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth
 deployment_identity: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f/resourcegroups/rg-testpr-test-uksouth/providers/microsoft.managedidentity/userassignedidentities/uai-testpr-test-uksouth
 azure_subscription: /subscriptions/da7f852b-9a37-4283-a8c0-de1dafd6cb1f
