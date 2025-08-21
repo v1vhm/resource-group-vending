@@ -25,6 +25,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  TF_LOG: DEBUG
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -195,6 +198,10 @@ jobs:
           client-id: ${{ secrets.AZURECLIENTID }}
           tenant-id: ${{ secrets.AZURETENANTID }}
           subscription-id: ${{ secrets.AZURESUBSCRIPTIONID }}
+
+      - name: Show Environment File
+        run: |
+          cat ${{ env.TF_VAR_environment_file }}
 
       - name: Terraform Init
         shell: bash
