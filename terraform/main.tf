@@ -21,20 +21,22 @@ provider "port" {}
 data "azurerm_subscription" "current" {}
 
 locals {
-  environment        = yamldecode(file(var.environment_file))
-  product_name       = local.environment.product_name
-  product_identifier = local.environment.product_identifier
-  services           = try(local.environment.services, [])
+  environment            = yamldecode(file(var.environment_file))
+  product_name           = local.environment.product_name
+  product_identifier     = local.environment.product_identifier
+  environment_identifier = local.environment.environment_identifier
+  services               = try(local.environment.services, [])
 }
 
 module "environment" {
   source = "./modules/resource_group"
 
-  location           = local.environment.location
-  environment        = local.environment.environment
-  product_name       = local.product_name
-  product_identifier = local.product_identifier
-  services           = local.services
+  location               = local.environment.location
+  environment            = local.environment.environment
+  product_name           = local.product_name
+  product_identifier     = local.product_identifier
+  environment_identifier = local.environment_identifier
+  services               = local.services
 }
 
 resource "port_entity" "resource_group" {

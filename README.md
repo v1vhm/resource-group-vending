@@ -28,7 +28,7 @@ The `status` line records the workflow's progress: it starts as `in_progress` an
 
 `vending_state_container` holds the Terraform state for the environment itself. The provisioning workflow creates this container in the shared `vendingtfstate` storage account before Terraform runs, using the name `envstate-<product_short_name>-<environment>-<location>`.
 
-Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform provisions a storage container in the environment's storage account for each `service_identifier`. Each container is named exactly after the `service_identifier`, recorded under `deployment_state_container`, and used by that service's deployments. Terraform also configures a GitHub OIDC federated credential for that service. The root module upserts a Port `azureStorageContainer` entity for every deployment state container.
+Services are associated with an environment later, so `services` may be omitted or left as an empty list. When services are listed, Terraform provisions a storage container in the environment's storage account for each `service_identifier`. Each container is named exactly after the `service_identifier`, recorded under `deployment_state_container`, and used by that service's deployments. Terraform also configures two GitHub OIDC federated credentials named `<environment_identifier>-plan` and `<environment_identifier>-apply` for that service. The root module upserts a Port `azureStorageContainer` entity for every deployment state container.
 
 The fields `deployment_environment`, `deployment_identity` and `azure_subscription` are appended after provisioning and are used to create the Port environment entity outside of Terraform. The file is committed when created, updated with outputs and finalized with the workflow result.
 
@@ -40,8 +40,8 @@ The root Terraform configuration instantiates a single module under
 `terraform/modules/resource_group` that is responsible only for
 provisioning Azure infrastructure. For each service in the environment
 manifest the module provisions a storage container named after the
-`service_identifier` and configures a GitHub OIDC federated
-credential. The module exposes detailed attributes for each resource,
+`service_identifier` and configures two GitHub OIDC federated
+credentials (`<environment_identifier>-plan` and `<environment_identifier>-apply`). The module exposes detailed attributes for each resource,
 including:
 
 - `resource_group_*` values for the resource group
