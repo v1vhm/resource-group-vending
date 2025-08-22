@@ -341,7 +341,7 @@ jobs:
           blueprint: link_environment_request
           identifier: ${{ inputs.request_identifier }}
           relations: >-
-            {"storage_account_identifier": "${{ needs.terraform.outputs.state_container_id }}"}
+            {"state_file_container": "${{ needs.terraform.outputs.state_container_id }}"}
 
       - name: Update request failure status
         if: ${{ needs.terraform.result != 'success' }}
