@@ -52,13 +52,23 @@ resource "azurerm_role_assignment" "storage_blob_data_contributor" {
   principal_id         = azurerm_user_assigned_identity.uai.principal_id
 }
 
+locals {
+  actions = ["plan", "apply"]
+}
+
 resource "azurerm_federated_identity_credential" "service" {
-  for_each            = { for s in var.services : s.service_identifier => s }
-  name                = "fic-${var.product_identifier}-${var.environment}-${each.key}"
+  for_each = {
+    for combination in setproduct(var.services, local.actions) :
+    "${combination[0].service_identifier}-${combination[1]}" => {
+      service = combination[0]
+      action  = combination[1]
+    }
+  }
+  name                = "${var.environment_identifier}-${each.value.action}"
   resource_group_name = azurerm_resource_group.rg.name
   parent_id           = azurerm_user_assigned_identity.uai.id
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${each.value.github.repository}:environment:${var.environment}"
+  subject             = "repo:${each.value.service.github.repository}:environment:${var.environment_identifier}-${each.value.action}"
   audience            = ["api://AzureADTokenExchange"]
 }
 

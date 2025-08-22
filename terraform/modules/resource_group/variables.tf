@@ -2,6 +2,7 @@ variable "location" { type = string }
 variable "environment" { type = string }
 variable "product_identifier" { type = string }
 variable "product_name" { type = string }
+variable "environment_identifier" { type = string }
 variable "services" {
   # Each service entry provisions a deployment state container and GitHub OIDC credential
   type = list(object({
