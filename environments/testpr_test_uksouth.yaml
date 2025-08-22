@@ -1,0 +1,9 @@
+environment_identifier: testpr_test_uksouth
+environment_title: Test Product test
+location: uksouth
+environment: test
+product_name: Test Product
+product_identifier: TESTPR
+port_run_id: r_ZCfJ5UFqI1Pr9DCV
+vending_state_container:
+status: in_progress
