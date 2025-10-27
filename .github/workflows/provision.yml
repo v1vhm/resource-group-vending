@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload plan
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tfplan
           path: terraform/tfplan
@@ -336,7 +336,7 @@ jobs:
       - name: Verify environment file
         run: test -f "$TF_VAR_environment_file"
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: tfplan
           path: terraform
@@ -417,7 +417,7 @@ jobs:
             yq e -i "(.services[] | select(.service_identifier == \"$svc\") | .deployment_state_container) = \"$id\"" "$TF_VAR_environment_file"
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: tfoutput
           path: tfoutput.json
