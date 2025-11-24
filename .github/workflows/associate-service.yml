@@ -52,7 +52,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting prepare for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }} via repo ${{ inputs.github_repo }}'
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Load environment context
         id: env
@@ -141,7 +141,7 @@ jobs:
           runId: ${{ env.PORT_RUN_ID }}
           logMessage: 'Starting terraform for service ${{ inputs.service_identifier }} in ${{ inputs.environment_identifier }}'
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Update services list
         shell: bash
@@ -261,7 +261,7 @@ jobs:
 
       - name: Upload Terraform logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: terraform-logs
           path: |
@@ -381,7 +381,7 @@ jobs:
 
       - name: Upload environment file
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: environment-file
           path: ${{ env.ENV_FILE }}
